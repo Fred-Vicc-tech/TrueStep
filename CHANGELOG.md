@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.2
+- Fix: opening a saved project in Live now keeps the saved sound. Live asks for program 0 (or the same factory preset) right after loading; this no longer overwrites your own preset, a Random pattern or your edits of a factory preset with Default Gate.
+
 ## 1.5.1
 - Manual: no line breaks inside "0 dB", "20 kHz", "50 %" or "32-delar"; short words stay with the next word (no lonely "En" at the end of a line). The heading is now "WHAT TrueStep DOES" / "VAD TrueStep GÖR".
 

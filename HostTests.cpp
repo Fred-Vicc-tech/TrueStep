@@ -208,6 +208,40 @@ int main()
               std::isfinite(e2->getParameter(e2, 0)), "felaktigt antal parametrar, NaN och trasigt namn hanteras");
     }
 
+    // Projekt med egen preset (program -1): Live ber om program 0 efter effSetChunk -> ljudet ska ligga kvar
+    {
+        AEffect* u = VSTPluginMain(hostCallback);
+        std::vector<unsigned char> own = saved;
+        const int32_t prog = -1;
+        std::memcpy(own.data() + 12, &prog, 4);
+        std::memset(own.data() + 16, 0, 32);
+        std::memcpy(own.data() + 16, "My Sound", 8);
+        check(u->dispatcher(u, effSetChunk, 0, (VstIntPtr)own.size(), own.data(), 0) == 1, "projekt med egen preset laddas");
+        u->dispatcher(u, effSetProgram, 0, 0, nullptr, 0);       // Live: "program 0" direkt efter laddning
+        u->dispatcher(u, effGetProgramName, 0, 0, text, 0);
+        check(std::strcmp(text, "My Sound") == 0 && u->getParameter(u, kParamMix) == 0.8f && u->getParameter(u, paramLP(5, 1)) == 0.4f,
+              "egen preset ligger kvar nar Live ber om program 0 efter oppning av projekt");
+        u->dispatcher(u, effSetProgram, 0, 3, nullptr, 0);       // ett riktigt val av fabrikspreset gäller fortfarande
+        u->dispatcher(u, effGetProgramName, 0, 0, text, 0);
+        check(std::strcmp(text, "Offbeat Pulse") == 0, "fabrikspreset 3 kan fortfarande valjas efter oppning");
+        u->dispatcher(u, effClose, 0, 0, nullptr, 0);
+    }
+
+    // Projekt där en fabrikspreset (Default Gate) ändrats: Live ber om samma program -> ändringarna ska ligga kvar
+    {
+        AEffect* u = VSTPluginMain(hostCallback);
+        std::vector<unsigned char> edited = saved;
+        const int32_t prog = 0;
+        std::memcpy(edited.data() + 12, &prog, 4);
+        std::memset(edited.data() + 16, 0, 32);
+        std::memcpy(edited.data() + 16, "Default Gate", 12);
+        check(u->dispatcher(u, effSetChunk, 0, (VstIntPtr)edited.size(), edited.data(), 0) == 1, "projekt med andrad fabrikspreset laddas");
+        u->dispatcher(u, effSetProgram, 0, 0, nullptr, 0);
+        check(u->getParameter(u, kParamMix) == 0.8f && u->getParameter(u, paramLP(5, 1)) == 0.4f,
+              "andringar i fabrikspreset ligger kvar nar Live ber om samma program efter oppning");
+        u->dispatcher(u, effClose, 0, 0, nullptr, 0);
+    }
+
     // Fabrikspresets som program
     {
         AEffect* q = VSTPluginMain(hostCallback);

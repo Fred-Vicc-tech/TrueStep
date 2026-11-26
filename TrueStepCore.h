@@ -72,7 +72,12 @@ struct Core
         return (int64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
                    std::chrono::steady_clock::now().time_since_epoch()).count();
     }
+    // Likadant när ett sparat projekt öppnas: Live ber om program 0 efter effSetChunk. Då ska det
+    // laddade ljudet (en egen preset, program -1) behållas, inte bytas mot Default Gate.
+    std::atomic<int64_t> stateLoadStamp{ -100000000 };
     void markEditorPreset() { editorPresetStamp.store(nowMs()); }
+    void markStateLoaded() { stateLoadStamp.store(nowMs()); }
+    bool stateLoadRecent() const { return nowMs() - stateLoadStamp.load() < 15000; }
     bool editorPresetRecent() const { return nowMs() - editorPresetStamp.load() < 3000; }
     void* editor = nullptr;                    // fönstret (TrueStepEditor.cpp), om öppet
 

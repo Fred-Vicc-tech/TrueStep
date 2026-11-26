@@ -145,7 +145,10 @@ VstIntPtr dispatcher(AEffect* e, VstInt32 opcode, VstInt32 index, VstIntPtr valu
     case effGetProgram: return p->program < 0 ? 0 : p->program;
     case effSetProgram:
         // Live ber om program 0 strax efter SAVE/LOAD: behåll då det sparade ljudet
-        if (p->program < 0 && value == 0 && p->editorPresetRecent()) return 0;
+        if (p->program < 0 && value == 0 && (p->editorPresetRecent() || p->stateLoadRecent())) return 0;
+        // Projekt som öppnas: Live ber om samma program som sparades. Det sparade ljudet (med dina ändringar
+        // av en fabrikspreset) är det som gäller, så programmet ska inte laddas om.
+        if (p->stateLoadRecent() && p->program >= 0 && value == p->program) return 0;
         p->loadFactoryPreset((int)value, false);
         return 0;
     case effGetProgramName:
@@ -165,7 +168,9 @@ VstIntPtr dispatcher(AEffect* e, VstInt32 opcode, VstInt32 index, VstIntPtr valu
     }
     case effSetChunk:
         if (!ptr || value <= 0) return 0;
-        return p->loadState(ptr, (size_t)value) ? 1 : 0;
+        if (!p->loadState(ptr, (size_t)value)) return 0;
+        p->markStateLoaded();
+        return 1;
 
     case effGetPlugCategory: return kPlugCategEffect;
     case effGetEffectName:
