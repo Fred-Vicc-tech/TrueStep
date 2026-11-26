@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0
+- Square BANK button next to RANDOMIZE: first press shows Random bank 1 in the PRESET box and the arrows browse its patterns; next press = next bank; after the last bank the button closes and the normal presets return.
+- RANDOMIZE button wider, same text size as SAVE/LOAD.
+
 ## 1.3.0
 - S/H (sample and hold) knob next to HUMANIZE: a new random cutoff for every step, held for the whole step. Tied to the song position, so export sounds like playback.
 - New layout of the DRY/WET (wider), OUTPUT (narrower) and the bottom row, following the new GUI image.

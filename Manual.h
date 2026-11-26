@@ -85,7 +85,8 @@ static const ManualPara kManual[] = {
                 "DRY/WET, OUTPUT and HUMANIZE are not changed. The patterns are made to play well: most steps are heard, the filter "
                 "always lets sound through, and RES is only used on longer steps, where it can be heard. Every pattern is saved "
                 "automatically as Random 0001, Random 0002 and so on in Documents\\TrueStep Presets\\Random, so you can get a good one "
-                "back with LOAD. After 9999 patterns a new folder (Random 2, Random 3 ...) is started." },
+                "back with LOAD, or with the square bank button next to RANDOMIZE: press it to show Random bank 1 in the PRESET box, "
+                "then step through the patterns with the arrows. Press again for the next bank; after the last bank the normal presets return. After 9999 patterns a new folder (Random 2, Random 3 ...) is started." },
 
     { kManHead, "PRESETS" },
     { kManBody, "TrueStep comes with 12 factory presets, which also appear in the preset list of your host. The arrows step through the "

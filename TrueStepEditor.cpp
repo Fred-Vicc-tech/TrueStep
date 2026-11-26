@@ -169,6 +169,10 @@ struct GdiCanvas : Canvas
 };
 
 // Kopplar gränssnittet till kärnan
+// Random-bank: knappen bredvid RANDOMIZE väljer vilken Random-mapp PRESET-pilarna bläddrar i.
+static int g_bank = 1;
+static bool g_bankMode = false;
+
 struct CoreGuiHost : GuiHost
 {
     Core* core;
@@ -178,6 +182,8 @@ struct CoreGuiHost : GuiHost
     void beginEdit(int i) override { core->beginEdit(i); }
     void endEdit(int i) override { core->endEdit(i); }
     const char* presetName() override { return core->presetName; }
+    int bankNumber() override { return g_bank; }
+    bool bankActive() override { return g_bankMode; }
     int playPos() override { return core->playPos.load(); }
     void takePeaks(float& l, float& r) override { l = core->peakL.exchange(0.0f); r = core->peakR.exchange(0.0f); }
 };
@@ -309,6 +315,21 @@ bool loadUserPreset(Editor* ed, const std::wstring& path, bool showErrors)
 void stepPreset(Editor* ed, int step)
 {
     Core* p = ed->plugin;
+    if (g_bankMode) {   // bläddra bara bland mönstren i vald Random-bank
+        const std::wstring base = presetFolder();
+        const std::vector<std::wstring> files = listUserPresets(base.empty() ? base : base + L"\\" + widen(randomFolderName(g_bank)));
+        const int n = (int)files.size();
+        if (n == 0) return;
+        int pos = -1;
+        for (int i = 0; i < n; ++i)
+            if (presetNameFromPath(files[(size_t)i].c_str()) == p->presetName) { pos = i; break; }
+        if (pos < 0) pos = step > 0 ? -1 : n;
+        for (int tries = 0; tries < n; ++tries) {
+            pos = ((pos + step) % n + n) % n;
+            if (loadUserPreset(ed, files[(size_t)pos], false)) return;
+        }
+        return;
+    }
     const std::vector<std::wstring> user = listUserPresets(presetFolder());
     const int total = kNumFactoryPresets + (int)user.size();
 
@@ -425,14 +446,59 @@ void randomizePattern(Editor* ed)
     presetsChanged(ed);
 }
 
+// Antal banker = Random, Random 2, Random 3 ... som finns (minst 1)
+int countBanks()
+{
+    const std::wstring base = presetFolder();
+    int n = 1;
+    if (base.empty()) return n;
+    for (;;) {
+        const DWORD a = GetFileAttributesW((base + L"\\" + widen(randomFolderName(n + 1))).c_str());
+        if (a == INVALID_FILE_ATTRIBUTES || !(a & FILE_ATTRIBUTE_DIRECTORY)) break;
+        ++n;
+    }
+    return n;
+}
+
+// Bank-knappen: 1:a trycket visar bank 1 i PRESET-rutan, nästa tryck nästa bank osv. Efter sista
+// banken stängs knappen och de vanliga presetsen kommer tillbaka.
+static char g_prevName[32] = "";
+static int g_prevProgram = -1;
+
+void nextBank(Editor* ed)
+{
+    Core* p = ed->plugin;
+    const int banks = countBanks();
+    if (!g_bankMode) {
+        copyString(g_prevName, p->presetName, sizeof g_prevName);
+        g_prevProgram = p->program;
+        g_bankMode = true;
+        g_bank = 1;
+    } else if (g_bank >= banks) {
+        g_bankMode = false;                       // stäng: vanliga presets igen
+        copyString(p->presetName, g_prevName, sizeof p->presetName);
+        p->program = g_prevProgram;
+        presetsChanged(ed);
+        return;
+    } else {
+        ++g_bank;
+    }
+    char nm[32];
+    std::snprintf(nm, sizeof nm, "Random bank %d", g_bank);
+    copyString(p->presetName, nm, sizeof p->presetName);
+    p->program = -1;
+    presetsChanged(ed);
+}
+
 void runAction(Editor* ed, StepGui::Action a)
 {
     switch (a) {
     case StepGui::kActPresetPrev: stepPreset(ed, -1); break;
     case StepGui::kActPresetNext: stepPreset(ed, +1); break;
-    case StepGui::kActSave: savePresetFile(ed); break;
-    case StepGui::kActLoad: loadPresetFile(ed); break;
+    case StepGui::kActSave: g_bankMode = false; savePresetFile(ed); break;
+    case StepGui::kActLoad: g_bankMode = false; loadPresetFile(ed); break;
     case StepGui::kActRandom: randomizePattern(ed); break;
+    case StepGui::kActBank: nextBank(ed); break;
     default: break;
     }
 }

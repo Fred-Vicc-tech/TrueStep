@@ -533,6 +533,7 @@ static void testGui()
     CHECK(g.mouseDown(228, 569, false) == StepGui::kActRandom);
     g.mouseDown(173 + 20, 492, false); g.mouseMove(193, 422, false); g.mouseUp();   // S/H-ratten dras uppåt
     CHECK(h.p[kParamSampleHold] > 0.2f);
+    CHECK(g.mouseDown(20 + 266 + 17, 569, false) == StepGui::kActBank);
     CHECK(g.mouseDown(5, 5, false) == StepGui::kActNone);
 
     // 14) loggan vänder pluginet; manualen går att rulla

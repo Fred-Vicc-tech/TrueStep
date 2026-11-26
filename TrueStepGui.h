@@ -55,6 +55,8 @@ struct GuiHost
     virtual void beginEdit(int /*index*/) {}
     virtual void endEdit(int /*index*/) {}
     virtual const char* presetName() { return ""; }
+    virtual int bankNumber() { return 1; }               // vald Random-bank (1, 2, 3 ...)
+    virtual bool bankActive() { return false; }          // PRESET-pilarna bläddrar i banken
     virtual int playPos() { return -1; }                // steg * 2 + halva, -1 = står still
     virtual void takePeaks(float& l, float& r) { l = 0.0f; r = 0.0f; }   // högsta nivå sedan sist
 };
@@ -187,7 +189,7 @@ class StepGui
 {
 public:
     enum { W = 900, H = 640 };
-    enum Action { kActNone, kActPresetPrev, kActPresetNext, kActSave, kActLoad, kActRandom };
+    enum Action { kActNone, kActPresetPrev, kActPresetNext, kActSave, kActLoad, kActRandom, kActBank };
 
     bool showBack = false;
 
@@ -252,6 +254,7 @@ public:
         if (btnSave_.hit(x, y)) return kActSave;
         if (btnLoad_.hit(x, y)) return kActLoad;
         if (btnRandom_.hit(x, y)) return kActRandom;
+        if (btnBank_.hit(x, y)) return kActBank;
 
         // rattar
         for (int k = 0; k < 4; ++k) {
@@ -374,7 +377,7 @@ public:
     {
         if (overLogo(x, y)) return kCurHand;
         if (showBack) return btnBack_.hit(x, y) ? kCurHand : kCurArrow;
-        if (presetPrev_.hit(x, y) || presetNext_.hit(x, y) || btnSave_.hit(x, y) || btnLoad_.hit(x, y) || btnRandom_.hit(x, y)) return kCurHand;
+        if (presetPrev_.hit(x, y) || presetNext_.hit(x, y) || btnSave_.hit(x, y) || btnLoad_.hit(x, y) || btnRandom_.hit(x, y) || btnBank_.hit(x, y)) return kCurHand;
         if (y >= kSplitY && y < kSplitY + kSplitH && x >= kLeft && x < kLeft + kNumSteps * kCellW) return kCurHand;
         int s, h; bool isPan;
         if (hitSelector(x, y, s, h, isPan)) return kCurHand;
@@ -419,7 +422,8 @@ private:
     Rect presetBox_ = { colX(2) + 48.0f, kRow2Y + 44.0f, 110.0f, 30.0f };
     Rect btnSave_ = { colX(2) + 14.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
     Rect btnLoad_ = { colX(2) + 106.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
-    Rect btnRandom_ = { colX(0) + 148.0f, kRow2Y + 135.0f, 120.0f, 34.0f };
+    Rect btnRandom_ = { colX(0) + 140.0f, kRow2Y + 135.0f, 120.0f, 34.0f };
+    Rect btnBank_ = { colX(0) + 266.0f, kRow2Y + 135.0f, 34.0f, 34.0f };
     Rect btnBack_ = { 760.0f, 114.0f, 100.0f, 34.0f };
 
     Drag drag_ = kDragNone;
@@ -691,6 +695,9 @@ private:
         }
         {
             drawButton(c, btnRandom_, "RANDOMIZE", false, theme::cyan);
+            char bn[16];
+            std::snprintf(bn, sizeof bn, "%d", host_->bankNumber());
+            drawButton(c, btnBank_, bn, host_->bankActive(), theme::cyan);
         }
 
         // === PRESET ===
