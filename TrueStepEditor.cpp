@@ -383,6 +383,48 @@ void loadPresetFile(Editor* ed)
     loadUserPreset(ed, file, true);
 }
 
+// RANDOMIZE: nytt mönster, sparas direkt som "Random 0001.tsp" ... i Random-mappen
+// (Dokument\TrueStep Presets\Random). Blir den full (9999) tas "Random 2" osv.
+void randomizePattern(Editor* ed)
+{
+    Core* p = ed->plugin;
+    const std::wstring base = presetFolder();
+    float v[kNumParams];
+    for (int i = 0; i < kNumParams; ++i) v[i] = p->params[i].load();
+    LARGE_INTEGER qpc;
+    QueryPerformanceCounter(&qpc);
+    static unsigned long long counter = 0;
+    randomPattern((unsigned long long)qpc.QuadPart * 0x9E3779B97F4A7C15ULL ^ (unsigned long long)GetTickCount() ^ (++counter << 40), v);
+
+    std::string name = "Random";
+    if (!base.empty()) {
+        for (int folder = 1; folder < 1000; ++folder) {
+            const std::wstring dir = base + L"\\" + widen(randomFolderName(folder));
+            CreateDirectoryW(dir.c_str(), nullptr);
+            int highest = 0;
+            WIN32_FIND_DATAW fd;
+            HANDLE h = FindFirstFileW((dir + L"\\Random ????.tsp").c_str(), &fd);
+            if (h != INVALID_HANDLE_VALUE) {
+                do {
+                    const int n = randomNumberFromName(presetNameFromPath(fd.cFileName));
+                    if (n > highest) highest = n;
+                } while (FindNextFileW(h, &fd));
+                FindClose(h);
+            }
+            if (highest >= kRandomMaxPerFolder) continue;   // full mapp: nästa
+            name = randomPresetName(highest + 1);
+            const std::string text = presetToText(name, v);
+            FILE* f = _wfopen((dir + L"\\" + widen(name) + L".tsp").c_str(), L"wb");
+            if (f) { std::fwrite(text.data(), 1, text.size(), f); std::fclose(f); }
+            break;
+        }
+    }
+    p->applyValues(v, true);
+    copyString(p->presetName, name.c_str(), sizeof p->presetName);
+    p->program = -1;
+    presetsChanged(ed);
+}
+
 void runAction(Editor* ed, StepGui::Action a)
 {
     switch (a) {
@@ -390,6 +432,7 @@ void runAction(Editor* ed, StepGui::Action a)
     case StepGui::kActPresetNext: stepPreset(ed, +1); break;
     case StepGui::kActSave: savePresetFile(ed); break;
     case StepGui::kActLoad: loadPresetFile(ed); break;
+    case StepGui::kActRandom: randomizePattern(ed); break;
     default: break;
     }
 }

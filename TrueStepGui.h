@@ -187,7 +187,7 @@ class StepGui
 {
 public:
     enum { W = 900, H = 640 };
-    enum Action { kActNone, kActPresetPrev, kActPresetNext, kActSave, kActLoad };
+    enum Action { kActNone, kActPresetPrev, kActPresetNext, kActSave, kActLoad, kActRandom };
 
     bool showBack = false;
 
@@ -251,6 +251,7 @@ public:
         if (presetNext_.hit(x, y)) return kActPresetNext;
         if (btnSave_.hit(x, y)) return kActSave;
         if (btnLoad_.hit(x, y)) return kActLoad;
+        if (btnRandom_.hit(x, y)) return kActRandom;
 
         // rattar
         for (int k = 0; k < 3; ++k) {
@@ -373,7 +374,7 @@ public:
     {
         if (overLogo(x, y)) return kCurHand;
         if (showBack) return btnBack_.hit(x, y) ? kCurHand : kCurArrow;
-        if (presetPrev_.hit(x, y) || presetNext_.hit(x, y) || btnSave_.hit(x, y) || btnLoad_.hit(x, y)) return kCurHand;
+        if (presetPrev_.hit(x, y) || presetNext_.hit(x, y) || btnSave_.hit(x, y) || btnLoad_.hit(x, y) || btnRandom_.hit(x, y)) return kCurHand;
         if (y >= kSplitY && y < kSplitY + kSplitH && x >= kLeft && x < kLeft + kNumSteps * kCellW) return kCurHand;
         int s, h; bool isPan;
         if (hitSelector(x, y, s, h, isPan)) return kCurHand;
@@ -417,6 +418,7 @@ private:
     Rect presetBox_ = { colX(2) + 48.0f, kRow2Y + 44.0f, 110.0f, 30.0f };
     Rect btnSave_ = { colX(2) + 14.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
     Rect btnLoad_ = { colX(2) + 106.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
+    Rect btnRandom_ = { colX(0) + 145.0f, kRow2Y + 148.0f, 84.0f, 28.0f };
     Rect btnBack_ = { 760.0f, 114.0f, 100.0f, 34.0f };
 
     Drag drag_ = kDragNone;
@@ -684,6 +686,7 @@ private:
             char ht[24];
             std::snprintf(ht, sizeof ht, "%.1f ms", (double)hv * kHumanizeMaxMs);
             c.text(hk.cx - 40.0f, hk.cy + 29.0f, 80.0f, ht, 13, kStyleBold, theme::cyan, kAlignCenter);
+            drawButton(c, btnRandom_, "RANDOMIZE", false, theme::cyan, 11.0f);
         }
 
         // === PRESET ===

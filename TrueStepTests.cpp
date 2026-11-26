@@ -530,6 +530,7 @@ static void testGui()
     CHECK(g.mouseDown(633, 476, false) == StepGui::kActPresetNext);
     CHECK(g.mouseDown(500, 520, false) == StepGui::kActSave);
     CHECK(g.mouseDown(600, 520, false) == StepGui::kActLoad);
+    CHECK(g.mouseDown(207, 575, false) == StepGui::kActRandom);
     CHECK(g.mouseDown(5, 5, false) == StepGui::kActNone);
 
     // 14) loggan vänder pluginet; manualen går att rulla
@@ -655,6 +656,89 @@ static void testHumanize()
     CHECK(fin);
 }
 
+static void testRandomize()
+{
+    // namn, mappar, numrering
+    CHECK(randomPresetName(1) == "Random 0001");
+    CHECK(randomPresetName(9999) == "Random 9999");
+    CHECK(randomFolderName(1) == "Random" && randomFolderName(2) == "Random 2");
+    CHECK(randomNumberFromName("Random 0042") == 42 && randomNumberFromName("Random 42") == 0 && randomNumberFromName("Wide") == 0);
+    CHECK(randomNumberFromName(randomPresetName(1234)) == 1234);
+
+    float keep[kNumParams];
+    int resOnShort = 0, filterBad = 0, tooQuiet = 0, outOfRange = 0, touched = 0, step0Rest = 0, notFinite = 0;
+    int differ = 0, splitTotal = 0, resTotal = 0;
+    float prev[kNumParams];
+    for (uint64_t seed = 1; seed <= 3000; ++seed) {
+        for (int i = 0; i < kNumParams; ++i) keep[i] = 0.123f + 0.001f * (i % 7);
+        float v[kNumParams];
+        for (int i = 0; i < kNumParams; ++i) v[i] = keep[i];
+        randomPattern(seed, v);
+        if (v[kParamMix] != keep[kParamMix] || v[kParamOutput] != keep[kParamOutput] || v[kParamHumanize] != keep[kParamHumanize]) ++touched;
+        int audible = 0, splits = 0;
+        for (int i = 0; i < kNumParams; ++i) if (!std::isfinite(v[i])) ++notFinite;
+        for (int s = 0; s < kNumSteps; ++s) {
+            const bool sp = v[kParamSplitBase + s] >= 0.5f;
+            if (sp) ++splits;
+            for (int h = 0; h < (sp ? 2 : 1); ++h) {
+                const float len = v[paramLen(s, h)], hp = v[paramHP(s, h)], lp = v[paramLP(s, h)];
+                const float res = v[paramRes(s, h)], pan = v[paramPan(s, h)];
+                for (float x : { len, hp, lp, res, pan }) if (x < 0.0f || x > 1.0f) ++outOfRange;
+                if (lp - hp < 0.185f) ++filterBad;
+                if (!sp && len >= 0.2f) ++audible;
+                if (slotFromValue(res) >= 3 && len < 0.6f) ++resOnShort;
+                if (slotFromValue(res) > 0) ++resTotal;
+                if (s == 0 && h == 0 && len < 0.2f) ++step0Rest;
+            }
+        }
+        splitTotal += splits;
+        if (audible < 8 - splits) ++tooQuiet;   // delade steg räknas separat; minst 8 steg totalt hörs
+        if (splits > 5) ++outOfRange;
+        if (seed > 1 && std::memcmp(prev, v, sizeof v) != 0) ++differ;
+        std::memcpy(prev, v, sizeof prev);
+        // samma frö ger samma mönster
+        float w[kNumParams];
+        for (int i = 0; i < kNumParams; ++i) w[i] = keep[i];
+        randomPattern(seed, w);
+        CHECK(std::memcmp(v, w, sizeof v) == 0);
+    }
+    CHECK(touched == 0);
+    CHECK(resOnShort == 0);
+    CHECK(filterBad == 0);
+    CHECK(tooQuiet == 0);
+    CHECK(outOfRange == 0);
+    CHECK(step0Rest == 0);
+    CHECK(notFinite == 0);
+    CHECK(differ > 2900);          // nästan alla frön ger olika mönster
+    CHECK(splitTotal > 3000);      // delade steg förekommer
+    CHECK(resTotal > 3000);        // resonans förekommer
+
+    // Mönstren går att köra och blir inte tysta eller trasiga
+    int silent = 0, bad = 0;
+    for (uint64_t seed = 1; seed <= 60; ++seed) {
+        Engine e;
+        e.prepare(44100.0);
+        float v[kNumParams];
+        for (int i = 0; i < kNumParams; ++i) v[i] = defaultParam(i);
+        randomPattern(seed * 7919, v);
+        e.setParams(v);
+        std::vector<float> in(512), l(512), r(512);
+        double peak = 0.0;
+        for (int blk = 0; blk < 200; ++blk) {
+            for (int i = 0; i < 512; ++i) in[(size_t)i] = 0.5f * std::sin(0.05f * (float)(blk * 512 + i));
+            e.setTransport(true, 120.0, true, true, blk * 512.0 / 44100.0 * 2.0);
+            e.process(in.data(), in.data(), l.data(), r.data(), 512, false);
+            for (int i = 0; i < 512; ++i) {
+                if (!std::isfinite(l[(size_t)i]) || !std::isfinite(r[(size_t)i]) || std::fabs(l[(size_t)i]) > 4.0f) ++bad;
+                peak = std::max(peak, (double)std::fabs(l[(size_t)i]));
+            }
+        }
+        if (peak < 0.01) ++silent;
+    }
+    CHECK(bad == 0);
+    CHECK(silent == 0);
+}
+
 static void testSpeed()
 {
     Rig r; r.allOpen();
@@ -681,6 +765,7 @@ int main()
     testPresetsAndState();
     testGui();
     testHumanize();
+    testRandomize();
     testSpeed();
     std::printf("%d checks, %d failed\n", g_checks, g_fails);
     return g_fails ? 1 : 0;

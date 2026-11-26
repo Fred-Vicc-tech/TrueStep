@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.0
+- RANDOMIZE button under HUMANIZE: invents a whole new playable pattern (length, filter, RES, PAN, 1/32 splits). DRY/WET, OUTPUT and HUMANIZE are left alone. RES is only used on longer steps, where it is audible.
+- Every random pattern is saved automatically as Random 0001, Random 0002 ... in Documents\TrueStep Presets\Random. After 9999 patterns a new folder (Random 2, Random 3 ...) is started.
+
 ## 1.1.1
 - GUI polish: pixel-exact (non-antialiased) step bars with new colours, straight-line top on PAN/RES level bars, wider DRY/WET box, narrower STEP box, subtitle lowered 2 px.
 - Fix: bars and small bars were blurry on Windows (GDI+ antialiasing/half-pixel offset); rectangles are now drawn with antialiasing off and pixel-exact.

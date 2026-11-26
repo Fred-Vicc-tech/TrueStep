@@ -73,6 +73,13 @@ static const ManualPara kManual[] = {
                 "and only a few move far from it. The pattern is fixed to the position in the song, so playback and export "
                 "sound the same every time. HUMANIZE adds no delay. It moves the gate and the filters in time, not the sound." },
 
+    { kManHead, "RANDOMIZE" },
+    { kManBody, "The RANDOMIZE button under HUMANIZE invents a whole new pattern: step lengths, filters, RES, PAN and 1/32 splits. "
+                "DRY/WET, OUTPUT and HUMANIZE are not changed. The patterns are made to play well: most steps are heard, the filter "
+                "always lets sound through, and RES is only used on longer steps, where it can be heard. Every pattern is saved "
+                "automatically as Random 0001, Random 0002 and so on in Documents\\TrueStep Presets\\Random, so you can get a good one "
+                "back with LOAD. After 9999 patterns a new folder (Random 2, Random 3 ...) is started." },
+
     { kManHead, "PRESETS" },
     { kManBody, "TrueStep comes with 12 factory presets, which also appear in the preset list of your host. The arrows step through the "
                 "factory presets and then your own. SAVE stores your own preset (.tsp) in the folder Documents\\TrueStep Presets, which is "

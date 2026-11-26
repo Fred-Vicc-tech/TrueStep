@@ -228,6 +228,144 @@ inline void factoryPresetValues(int idx, float* v)
 }
 
 // ---------------------------------------------------------------------------
+// RANDOMIZE: hittar på ett helt eget, fungerande mönster. DRY/WET, OUTPUT och HUMANIZE
+// rörs inte. Generatorn är ren (samma frö ger samma mönster) och följer några regler
+// så att resultatet låter som musik och inte som slump:
+//  - minst 8 av 16 steg hörs, steg 1 är aldrig paus
+//  - lowpass ligger alltid minst 0,19 över highpass (ljud kommer igenom)
+//  - resonans (RES) läggs bara på längre steg (>= 60 %) med ett filter som är i spel,
+//    eftersom den knappt hörs på korta steg
+// ---------------------------------------------------------------------------
+struct RandomGen
+{
+    uint64_t s;
+    explicit RandomGen(uint64_t seed) : s(seed) { next(); next(); }
+    uint64_t next()
+    {
+        s += 0x9E3779B97F4A7C15ULL;
+        uint64_t z = s;
+        z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ULL;
+        z = (z ^ (z >> 27)) * 0x94D049BB133111EBULL;
+        return z ^ (z >> 31);
+    }
+    double u() { return (double)(next() >> 11) / 9007199254740992.0; }
+    int i(int n) { return (int)(u() * n) % n; }
+    bool chance(double p) { return u() < p; }
+};
+
+inline void randomPattern(uint64_t seed, float* v)
+{
+    RandomGen r(seed);
+    auto q = [](double x, double step) { return (float)(std::floor(x / step + 0.5) * step); };
+    auto c01 = [](double x) { return x < 0.0 ? 0.0 : (x > 1.0 ? 1.0 : x); };
+
+    const int style = r.i(4);       // 0 trance, 1 offbeat, 2 synkoperat, 3 legato
+    const int fmode = r.i(5);       // 0 öppet, 1 lowpass, 2 highpass, 3 band, 4 slumpat lowpass
+    const int shape = r.i(3);       // 0 ramp, 1 triangel, 2 slump
+    const int panMode = r.i(3);     // 0 mitt, 1 ping-pong, 2 spridd
+    static const double restProb[4] = { 0.10, 0.30, 0.22, 0.05 };
+    static const double pick03[6] = { 0.25, 0.35, 0.5, 0.65, 0.8, 1.0 };
+
+    auto filt = [&](double t, float& hp, float& lp) {
+        double h = 0.0, l = 1.0;
+        switch (fmode) {
+        case 1: l = 0.25 + 0.75 * t; break;
+        case 2: h = 0.6 * t; break;
+        case 3: h = 0.15 + 0.35 * t; l = h + 0.3 + 0.3 * r.u(); break;
+        case 4: l = 0.3 + 0.7 * r.u(); break;
+        default: break;
+        }
+        l = c01(l);
+        if (l < h + 0.2) { l = h + 0.2; if (l > 1.0) { l = 1.0; h = 0.8; } }
+        hp = q(h, 0.01); lp = q(l, 0.01);
+        if (lp - hp < 0.19f) hp = lp - 0.19f;
+        if (hp < 0.0f) hp = 0.0f;
+    };
+    auto lenFor = [&](int s) -> double {
+        double len;
+        switch (style) {
+        case 0: len = (s % 4 == 0) ? (0.7 + 0.15 * r.i(3)) : (0.3 + 0.1 * r.i(4)); break;
+        case 1: len = (s % 2 == 1) ? (0.5 + 0.175 * r.i(3)) : (0.25 + 0.15 * r.i(2)); break;
+        case 2: len = pick03[r.i(6)]; break;
+        default: len = 0.8 + 0.1 * r.i(3); break;
+        }
+        if (s != 0 && r.chance(style == 1 && s % 2 == 0 ? 0.5 : restProb[style])) len = 0.0;
+        return len;
+    };
+    auto panFor = [&](int pos) -> int {
+        if (panMode == 0) return 4;
+        if (panMode == 1) return (pos % 2 == 0) ? 1 + r.i(2) : 6 + r.i(2);
+        return r.chance(0.4) ? 4 : r.i(9);
+    };
+
+    int splits = 0;
+    double lens[kNumSteps];
+    for (int s = 0; s < kNumSteps; ++s) lens[s] = lenFor(s);
+    int audible = 0;
+    for (int s = 0; s < kNumSteps; ++s) if (lens[s] >= 0.2) ++audible;
+    for (int s = 1; s < kNumSteps && audible < 8; ++s)
+        if (lens[s] < 0.2) { lens[s] = 0.6; ++audible; }
+
+    for (int s = 0; s < kNumSteps; ++s) {
+        double t;
+        if (shape == 0) t = s / 15.0;
+        else if (shape == 1) t = ((s % 8) < 4 ? (s % 8) : 8 - (s % 8)) / 4.0;
+        else t = r.u();
+        if (shape != 2) t = c01(t + (r.u() - 0.5) * 0.16);
+
+        const bool split = splits < 5 && r.chance(0.2);
+        if (split) ++splits;
+        v[kParamSplitBase + s] = split ? 1.0f : 0.0f;
+
+        for (int h = 0; h < (split ? 2 : 1); ++h) {
+            double len = lens[s];
+            if (split) len = (h == 0) ? 0.4 + 0.2 * r.i(3) : 0.3 + 0.2 * r.i(3);
+            if (s == 0 && len < 0.3) len = 0.4;
+            float hp, lp;
+            filt(h == 0 ? t : c01(t + (r.u() - 0.5) * 0.6), hp, lp);
+            int res = 0;
+            const bool filterActive = lp < 0.95f || hp > 0.05f;
+            if (!split && len >= 0.6 && filterActive) res = r.chance(0.65) ? 3 + r.i(6) : r.i(3);
+            else if (len >= 0.6 && filterActive && r.chance(0.2)) res = 1;
+            v[paramLen(s, h)] = q(len, 0.05);
+            v[paramHP(s, h)] = hp;
+            v[paramLP(s, h)] = lp;
+            v[paramPan(s, h)] = valueFromSlot(panFor(s * 2 + h));
+            v[paramRes(s, h)] = valueFromSlot(res);
+        }
+        if (!split) {   // andra halvan oanvänd: standardvärden
+            v[paramLen(s, 1)] = defaultParam(paramLen(s, 1));
+            v[paramHP(s, 1)] = defaultParam(paramHP(s, 1));
+            v[paramLP(s, 1)] = defaultParam(paramLP(s, 1));
+            v[paramPan(s, 1)] = defaultParam(paramPan(s, 1));
+            v[paramRes(s, 1)] = defaultParam(paramRes(s, 1));
+        }
+    }
+}
+
+// Filnamn för sparade slumpmönster: "Random 0001" ... "Random 9999". Mappen heter
+// "Random"; är den full (9999 filer) tas "Random 2", "Random 3" ... automatiskt.
+inline std::string randomPresetName(int n)
+{
+    char b[32];
+    std::snprintf(b, sizeof b, "Random %04d", n);
+    return b;
+}
+inline std::string randomFolderName(int folder) { return folder <= 1 ? std::string("Random") : "Random " + std::to_string(folder); }
+// "Random 0042" -> 42, annars 0
+inline int randomNumberFromName(const std::string& name)
+{
+    if (name.size() != 11 || name.compare(0, 7, "Random ") != 0) return 0;
+    int n = 0;
+    for (size_t i = 7; i < 11; ++i) {
+        if (name[i] < '0' || name[i] > '9') return 0;
+        n = n * 10 + (name[i] - '0');
+    }
+    return n;
+}
+static const int kRandomMaxPerFolder = 9999;
+
+// ---------------------------------------------------------------------------
 // Egna presets som textfil (Dokument\TrueStep Presets\*.tsp)
 // ---------------------------------------------------------------------------
 static const char* const kPresetHeader = "TrueStep preset 1";
