@@ -407,7 +407,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
     case WM_SETCURSOR:
         if (ed && LOWORD(lParam) == HTCLIENT) {
             POINT pt; GetCursorPos(&pt); ScreenToClient(hwnd, &pt);
-            LPCWSTR cur = IDC_ARROW;
+            LPCSTR cur = IDC_ARROW;
             switch (ed->gui.cursorAt(pt.x, pt.y)) {
             case kCurHand: cur = IDC_HAND; break;
             case kCurSizeWE: cur = IDC_SIZEWE; break;
