@@ -209,7 +209,7 @@ void paintTo(Editor* ed, Graphics& out, int width, int height)
     }
     out.SetInterpolationMode(InterpolationModeNearestNeighbor);
     out.SetPixelOffsetMode(PixelOffsetModeHalf);
-    out.DrawImage(&buffer, Rect(0, 0, width, height), 0, 0, width, height, UnitPixel);
+    out.DrawImage(&buffer, Gdiplus::Rect(0, 0, width, height), 0, 0, width, height, UnitPixel);
 }
 
 void paint(Editor* ed, HDC hdc, int width, int height)
