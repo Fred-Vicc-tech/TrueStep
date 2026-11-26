@@ -409,11 +409,11 @@ private:
     GuiHost* host_;
     KnobDef knobs_[2] = { { kParamMix, colX(0) + 103.0f, kRow2Y + 92.0f, 44.0f },
                           { kParamOutput, colX(3) + 103.0f, kRow2Y + 92.0f, 44.0f } };
-    Rect presetPrev_ = { colX(1) + 14.0f, kRow2Y + 44.0f, 30.0f, 30.0f };
-    Rect presetNext_ = { colX(1) + 162.0f, kRow2Y + 44.0f, 30.0f, 30.0f };
-    Rect presetBox_ = { colX(1) + 48.0f, kRow2Y + 44.0f, 110.0f, 30.0f };
-    Rect btnSave_ = { colX(1) + 14.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
-    Rect btnLoad_ = { colX(1) + 106.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
+    Rect presetPrev_ = { colX(2) + 14.0f, kRow2Y + 44.0f, 30.0f, 30.0f };
+    Rect presetNext_ = { colX(2) + 162.0f, kRow2Y + 44.0f, 30.0f, 30.0f };
+    Rect presetBox_ = { colX(2) + 48.0f, kRow2Y + 44.0f, 110.0f, 30.0f };
+    Rect btnSave_ = { colX(2) + 14.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
+    Rect btnLoad_ = { colX(2) + 106.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
     Rect btnBack_ = { 760.0f, 114.0f, 100.0f, 34.0f };
 
     Drag drag_ = kDragNone;
@@ -673,7 +673,7 @@ private:
 
         // === PRESET ===
         {
-            const float x0 = colX(1);
+            const float x0 = colX(2);
             drawPanel(c, x0, kRow2Y, kPanelW, kRow2H);
             c.text(x0 + 16, kRow2Y + 10, 180, "PRESET", 16, kStyleBold, theme::text, kAlignNear);
             drawButton(c, presetPrev_, "<", false, theme::cyan);
@@ -690,7 +690,7 @@ private:
 
         // === STEP (värden för valt steg) ===
         {
-            const float x0 = colX(2);
+            const float x0 = colX(1);
             drawPanel(c, x0, kRow2Y, kPanelW, kRow2H);
             c.text(x0 + 16, kRow2Y + 10, 100, "STEP", 16, kStyleBold, theme::text, kAlignNear);
             const int s = infoStep_, h = infoHalf_ < (isSplit(s) ? 2 : 1) ? infoHalf_ : 0;

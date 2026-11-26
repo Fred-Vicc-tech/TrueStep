@@ -7,6 +7,7 @@
 #include "TrueStepDSP.h"
 
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <cstring>
 #if defined(_M_X64) || defined(__x86_64__) || defined(_M_IX86) || defined(__i386__)
@@ -63,6 +64,16 @@ struct Core
     StateChunk chunk;
     int program = 0;
     char presetName[32] = "Default Gate";
+    // Tid (ms) då fönstret senast bytte/sparade preset. Vissa värdar (Live) ber om program 0 strax
+    // efter att pluginet meddelat att presetnamnet ändrats; det ska inte skriva över ljudet.
+    std::atomic<int64_t> editorPresetStamp{ -100000 };
+    static int64_t nowMs()
+    {
+        return (int64_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+                   std::chrono::steady_clock::now().time_since_epoch()).count();
+    }
+    void markEditorPreset() { editorPresetStamp.store(nowMs()); }
+    bool editorPresetRecent() const { return nowMs() - editorPresetStamp.load() < 3000; }
     void* editor = nullptr;                    // fönstret (TrueStepEditor.cpp), om öppet
 
     Core() { for (int i = 0; i < kNumParams; ++i) params[i].store(defaultParam(i)); }

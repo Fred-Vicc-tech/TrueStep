@@ -268,6 +268,7 @@ bool readPresetFile(const std::wstring& path, float* v)
 
 void presetsChanged(Editor* ed)
 {
+    ed->plugin->markEditorPreset();
     ed->plugin->hostUpdateDisplay();
     InvalidateRect(ed->hwnd, nullptr, FALSE);
 }

@@ -526,10 +526,10 @@ static void testGui()
     CHECK(h.begins == h.ends);
 
     // 13) presetknapparna ger åtgärder
-    CHECK(g.mouseDown(267, 476, false) == StepGui::kActPresetPrev);
-    CHECK(g.mouseDown(415, 476, false) == StepGui::kActPresetNext);
-    CHECK(g.mouseDown(280, 520, false) == StepGui::kActSave);
-    CHECK(g.mouseDown(390, 520, false) == StepGui::kActLoad);
+    CHECK(g.mouseDown(485, 476, false) == StepGui::kActPresetPrev);
+    CHECK(g.mouseDown(633, 476, false) == StepGui::kActPresetNext);
+    CHECK(g.mouseDown(500, 520, false) == StepGui::kActSave);
+    CHECK(g.mouseDown(600, 520, false) == StepGui::kActLoad);
     CHECK(g.mouseDown(5, 5, false) == StepGui::kActNone);
 
     // 14) loggan vänder pluginet; manualen går att rulla

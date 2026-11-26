@@ -144,6 +144,8 @@ VstIntPtr dispatcher(AEffect* e, VstInt32 opcode, VstInt32 index, VstIntPtr valu
     // Fabrikspresets visas som "program" i Lives presetlista.
     case effGetProgram: return p->program < 0 ? 0 : p->program;
     case effSetProgram:
+        // Live ber om program 0 strax efter SAVE/LOAD: behåll då det sparade ljudet
+        if (p->program < 0 && value == 0 && p->editorPresetRecent()) return 0;
         p->loadFactoryPreset((int)value, false);
         return 0;
     case effGetProgramName:
