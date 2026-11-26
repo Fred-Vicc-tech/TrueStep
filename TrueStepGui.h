@@ -14,6 +14,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstring>
+#include <string>
+#include <vector>
 
 namespace truestep {
 
@@ -187,6 +189,50 @@ inline void drawKnob(Canvas& c, float cx, float cy, float r, float v)
 // ---------------------------------------------------------------------------
 // Själva gränssnittet
 // ---------------------------------------------------------------------------
+// Typografi för manualen: inga radbrytningar mellan tal och enhet ("0 dB", "20 kHz", "50 %"),
+// inte mitt i "32-delar", och korta ord (1-2 bokstäver, samt första ordet i en mening upp till 3 bokstäver)
+// hålls ihop med nästa ord så att de aldrig blir ensamma på en rad. Ersätter mellanslag med fast
+// mellanslag (UTF-8 C2 A0) och bindestreck med icke-brytande bindestreck (E2 80 91).
+inline std::string typeset(const char* in)
+{
+    const std::string s = in;
+    static const char* const units[] = { "dBFS", "dB", "kHz", "Hz", "ms", "%" };
+    const char* nb = "\xC2\xA0";
+    std::string out;
+    const size_t n = s.size();
+    auto isLetter = [](unsigned char c) { return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || c >= 0x80; };
+    for (size_t i = 0; i < n; ++i) {
+        const char c = s[i];
+        if (c == ' ' && i > 0 && i + 1 < n) {
+            bool bind = false;
+            // tal + enhet
+            if (s[i - 1] >= '0' && s[i - 1] <= '9') {
+                for (const char* u : units) {
+                    const size_t L = std::strlen(u);
+                    if (s.compare(i + 1, L, u) == 0 && (i + 1 + L >= n || !isLetter((unsigned char)s[i + 1 + L]))) bind = true;
+                }
+            }
+            // kort ord före mellanslaget
+            size_t b = i;
+            while (b > 0 && isLetter((unsigned char)s[b - 1])) --b;
+            const size_t wlen = i - b;
+            if (wlen >= 1 && wlen <= 2) bind = true;
+            if (wlen == 3) {   // första ordet i en mening: "Ett", "The"
+                size_t p = b;
+                while (p > 0 && s[p - 1] == ' ') --p;
+                if (p == 0 || s[p - 1] == '.' || s[p - 1] == ':') bind = true;
+            }
+            if (bind) { out += nb; continue; }
+        }
+        if (c == '-' && i > 0 && i + 1 < n && s[i - 1] >= '0' && s[i - 1] <= '9' && isLetter((unsigned char)s[i + 1])) {
+            out += "\xE2\x80\x91";   // 32-delar, 16-delar
+            continue;
+        }
+        out += c;
+    }
+    return out;
+}
+
 class StepGui
 {
 public:
@@ -426,6 +472,7 @@ private:
     Rect btnLoad_ = { colX(2) + 106.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
     Rect btnRandom_ = { colX(0) + 144.0f, kRow2Y + 135.0f, 87.0f, 34.0f };
     Rect btnBank_ = { colX(0) + 239.0f, kRow2Y + 135.0f, 33.0f, 34.0f };
+    std::vector<std::string> typeEn_, typeSv_;   // manualtexten efter typografi (se typeset)
     Rect langEng_ = { 0, 0, 0, 0 }, langSwe_ = { 0, 0, 0, 0 };   // sätts vid ritning av baksidan
     Rect btnBack_ = { 760.0f, 114.0f, 100.0f, 34.0f };
 
@@ -820,14 +867,20 @@ private:
         float y = y0;
         int count = 0;
         const ManualPara* man = manualFor(host_->language(), count);
+        std::vector<std::string>& cache = host_->language() == kLangSwe ? typeSv_ : typeEn_;
+        if ((int)cache.size() != count) {
+            cache.clear();
+            for (int i = 0; i < count; ++i) cache.push_back(man[i].kind == kManHead ? std::string(man[i].text) : typeset(man[i].text));
+        }
         for (int i = 0; i < count; ++i) {
             const ManualPara& mp = man[i];
+            const char* txt = cache[(size_t)i].c_str();
             float size; int style; Rgba color;
             manualFont(mp.kind, size, style, color);
             if (mp.kind == kManHead && i > 0) y += 14.0f;
-            const float h = c.textHeight(mp.text, kManW, size, style);
+            const float h = c.textHeight(txt, kManW, size, style);
             if (draw && y + h > kManTop - 20.0f && y < kManBottom + 20.0f)
-                c.text(kManX, y, kManW, mp.text, size, style, color, kAlignNear);
+                c.text(kManX, y, kManW, txt, size, style, color, kAlignNear);
             y += h + (mp.kind == kManHead ? 3.0f : 7.0f);
         }
         return y - y0;

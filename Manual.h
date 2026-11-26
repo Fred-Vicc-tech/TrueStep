@@ -13,7 +13,7 @@ struct ManualPara
 };
 
 static const ManualPara kManual[] = {
-    { kManHead, "WHAT TRUESTEP DOES" },
+    { kManHead, "WHAT TrueStep DOES" },
     { kManBody, "TrueStep is a rhythmic step filter and gate. It follows the tempo and song position of your host and divides every bar "
                 "into 16 steps (16th notes). Each step has its own gate length, highpass and lowpass filter, resonance and stereo "
                 "position, and any step can be split into two 32nd notes that have settings of their own. Drag the edges of the bars in "
@@ -107,7 +107,7 @@ static const ManualPara kManual[] = {
 
 // --- Svenska -----------------------------------------------------------------
 static const ManualPara kManualSv[] = {
-    { kManHead, "VAD TRUESTEP GÖR" },
+    { kManHead, "VAD TrueStep GÖR" },
     { kManBody, "TrueStep är ett rytmiskt stegfilter och en gate. Det följer tempot och låtens position i värdprogrammet och delar "
                 "varje takt i 16 steg (16-delar). Varje steg har egen gate-längd, highpass- och lowpass-filter, resonans och "
                 "stereoposition, och varje steg kan delas i två 32-delar med egna inställningar. Dra i kanterna på staplarna i "

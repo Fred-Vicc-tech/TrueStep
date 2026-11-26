@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.5.1
+- Manual: no line breaks inside "0 dB", "20 kHz", "50 %" or "32-delar"; short words stay with the next word (no lonely "En" at the end of a line). The heading is now "WHAT TrueStep DOES" / "VAD TrueStep GÖR".
+
 ## 1.5.0
 - Swedish manual: ENG | SWE after the word MANUAL on the back page. Only the manual text changes language; the rest of the window stays English. The choice is remembered (Documents\TrueStep Presets\language.txt).
 - Back page header now says VST2 / VST3; manual note mentions the VST3 SDK (MIT).

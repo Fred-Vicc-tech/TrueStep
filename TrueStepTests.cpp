@@ -545,13 +545,13 @@ static void testGui()
     CHECK(g.showBack);
     CountCanvas bc;
     g.draw(bc, 1016); g.draw(bc, 1032);
-    CHECK(bc.has("MANUAL") && bc.has("WHAT TRUESTEP DOES") && bc.has("BACK") && bc.clips == bc.unclips && bc.clips >= 2);
+    CHECK(bc.has("MANUAL") && bc.has("WHAT TrueStep DOES") && bc.has("BACK") && bc.clips == bc.unclips && bc.clips >= 2);
     bool credit = false; for (const std::string& t : bc.texts) if (t.find(" 2F Productions 2026") != std::string::npos) credit = true;
     CHECK(credit);
     g.wheel(400, 400, -5);                                       // rulla ner
     CountCanvas bc2; g.draw(bc2, 1048);
-    CHECK(!bc2.has("WHAT TRUESTEP DOES"));                      // första rubriken har rullat ut ur bild
-    g.wheel(400, 400, 100); CountCanvas bc3; g.draw(bc3, 1064); CHECK(bc3.has("WHAT TRUESTEP DOES")); // rullar upp igen, stannar överst
+    CHECK(!bc2.has("WHAT TrueStep DOES"));                      // första rubriken har rullat ut ur bild
+    g.wheel(400, 400, 100); CountCanvas bc3; g.draw(bc3, 1064); CHECK(bc3.has("WHAT TrueStep DOES")); // rullar upp igen, stannar överst
     // språkval i manualen: ENG | SWE efter ordet MANUAL (bara manualtexten byts, resten är engelskt)
     {
         CountCanvas lc; g.draw(lc, 1070);
@@ -559,13 +559,13 @@ static void testGui()
         g.mouseDown(155, 200, false); g.mouseUp();
         CHECK(h.lang == 1);
         CountCanvas sc; g.draw(sc, 1071);
-        CHECK(sc.has("VAD TRUESTEP G\xC3\x96R") && !sc.has("WHAT TRUESTEP DOES") && sc.has("BACK") && sc.has("MANUAL"));
+        CHECK(sc.has("VAD TrueStep G\xC3\x96R") && !sc.has("WHAT TrueStep DOES") && sc.has("BACK") && sc.has("MANUAL"));
         CHECK(g.cursorAt(155, 200) == kCurHand);
         g.wheel(400, 400, -1000); g.draw(sc, 1072);               // svensk text rullar utan problem
         g.mouseDown(110, 200, false); g.mouseUp();
         CHECK(h.lang == 0);
         CountCanvas ec; g.draw(ec, 1073);
-        CHECK(ec.has("WHAT TRUESTEP DOES") && !ec.has("VAD TRUESTEP G\xC3\x96R"));
+        CHECK(ec.has("WHAT TrueStep DOES") && !ec.has("VAD TrueStep G\xC3\x96R"));
     }
     g.wheel(400, 400, -1000); g.draw(bc3, 1080);                  // längst ner, kraschar inte
     g.mouseDown(855, 300, false);                                // dra rullningslisten
@@ -675,6 +675,24 @@ static void testHumanize()
     std::vector<float> xL, xR; q.run(one, one, xL, xR, 77, true, 3.3, 299.0);
     bool fin = true; for (float x : xL) fin = fin && std::isfinite(x) && std::fabs(x) < 4.0f;
     CHECK(fin);
+}
+
+static void testTypeset()
+{
+    const std::string nbsp = "\xC2\xA0", nbh = "\xE2\x80\x91";
+    CHECK(typeset("levels of 0 dB here") == "levels of" + nbsp + "0" + nbsp + "dB" + nbsp + "here");                 // tal + enhet hålls ihop
+    CHECK(typeset("from -24 to +12 dB and 20 kHz") == "from -24 to" + nbsp + "+12" + nbsp + "dB" + nbsp + "and 20" + nbsp + "kHz");
+    CHECK(typeset("limit 50 % now") == "limit 50" + nbsp + "% now");
+    CHECK(typeset("delas i 32-delar nu") == "delas i" + nbsp + "32" + nbh + "delar nu");
+    CHECK(typeset("slut. En takt i 4/4 \xC3\xA4r").find("En" + nbsp + "takt") != std::string::npos);   // ensamt "En" hindras
+    CHECK(typeset("slut. En takt").find("slut.") == 0);
+    CHECK(typeset("Ett steg").find("Ett" + nbsp + "steg") == 0);
+    CHECK(typeset("ordinary long words stay").find("ordinary long") == 0);          // vanliga ord rörs inte
+    CHECK(typeset("") == "");
+    for (int lang = 0; lang < 2; ++lang) {   // hela manualen går att typsätta
+        int count = 0; const ManualPara* man = manualFor(lang, count);
+        for (int i = 0; i < count; ++i) CHECK(!typeset(man[i].text).empty());
+    }
 }
 
 static void testRandomize()
@@ -839,6 +857,7 @@ int main()
     testPresetsAndState();
     testGui();
     testHumanize();
+    testTypeset();
     testRandomize();
     testSampleHold();
     testSpeed();
