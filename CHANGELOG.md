@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.5.0
+- Swedish manual: ENG | SWE after the word MANUAL on the back page. Only the manual text changes language; the rest of the window stays English. The choice is remembered (Documents\TrueStep Presets\language.txt).
+- Back page header now says VST2 / VST3; manual note mentions the VST3 SDK (MIT).
+
 ## 1.4.0
 - Square BANK button next to RANDOMIZE: first press shows Random bank 1 in the PRESET box and the arrows browse its patterns; next press = next bank; after the last bank the button closes and the normal presets return.
 - RANDOMIZE button wider, same text size as SAVE/LOAD.

@@ -409,6 +409,9 @@ struct FakeGuiHost : GuiHost
     void endEdit(int) override { ++ends; }
     const char* presetName() override { return name.c_str(); }
     int playPos() override { return pos; }
+    int lang = 0;
+    int language() override { return lang; }
+    void setLanguage(int l) override { lang = l; }
     void takePeaks(float& l, float& r) override { l = r = peak; }
 };
 
@@ -549,6 +552,21 @@ static void testGui()
     CountCanvas bc2; g.draw(bc2, 1048);
     CHECK(!bc2.has("WHAT TRUESTEP DOES"));                      // första rubriken har rullat ut ur bild
     g.wheel(400, 400, 100); CountCanvas bc3; g.draw(bc3, 1064); CHECK(bc3.has("WHAT TRUESTEP DOES")); // rullar upp igen, stannar överst
+    // språkval i manualen: ENG | SWE efter ordet MANUAL (bara manualtexten byts, resten är engelskt)
+    {
+        CountCanvas lc; g.draw(lc, 1070);
+        CHECK(lc.has("ENG") && lc.has("SWE") && h.lang == 0);
+        g.mouseDown(155, 200, false); g.mouseUp();
+        CHECK(h.lang == 1);
+        CountCanvas sc; g.draw(sc, 1071);
+        CHECK(sc.has("VAD TRUESTEP G\xC3\x96R") && !sc.has("WHAT TRUESTEP DOES") && sc.has("BACK") && sc.has("MANUAL"));
+        CHECK(g.cursorAt(155, 200) == kCurHand);
+        g.wheel(400, 400, -1000); g.draw(sc, 1072);               // svensk text rullar utan problem
+        g.mouseDown(110, 200, false); g.mouseUp();
+        CHECK(h.lang == 0);
+        CountCanvas ec; g.draw(ec, 1073);
+        CHECK(ec.has("WHAT TRUESTEP DOES") && !ec.has("VAD TRUESTEP G\xC3\x96R"));
+    }
     g.wheel(400, 400, -1000); g.draw(bc3, 1080);                  // längst ner, kraschar inte
     g.mouseDown(855, 300, false);                                // dra rullningslisten
     g.mouseMove(855, 500, false); g.mouseMove(855, -300, false); g.mouseUp();

@@ -173,6 +173,11 @@ struct GdiCanvas : Canvas
 static int g_bank = 1;
 static bool g_bankMode = false;
 
+// Manualens språk (ENG/SWE) kommer ihåg till nästa gång (Documents\TrueStep Presets\language.txt)
+static int g_lang = -1;
+int loadLanguage();
+void saveLanguage(int lang);
+
 struct CoreGuiHost : GuiHost
 {
     Core* core;
@@ -182,6 +187,8 @@ struct CoreGuiHost : GuiHost
     void beginEdit(int i) override { core->beginEdit(i); }
     void endEdit(int i) override { core->endEdit(i); }
     const char* presetName() override { return core->presetName; }
+    int language() override { if (g_lang < 0) g_lang = loadLanguage(); return g_lang; }
+    void setLanguage(int l) override { g_lang = (l == kLangSwe) ? kLangSwe : kLangEng; saveLanguage(g_lang); }
     int bankNumber() override { return g_bank; }
     bool bankActive() override { return g_bankMode; }
     int playPos() override { return core->playPos.load(); }
@@ -233,6 +240,28 @@ std::wstring presetFolder()
     std::wstring dir = std::wstring(docs) + L"\\TrueStep Presets";
     CreateDirectoryW(dir.c_str(), nullptr);   // gör inget om mappen redan finns
     return dir;
+}
+
+int loadLanguage()
+{
+    const std::wstring dir = presetFolder();
+    if (dir.empty()) return kLangEng;
+    FILE* f = _wfopen((dir + L"\\language.txt").c_str(), L"rb");
+    if (!f) return kLangEng;
+    char buf[8] = { 0 };
+    const size_t n = std::fread(buf, 1, 3, f);
+    std::fclose(f);
+    return (n == 3 && std::memcmp(buf, "SWE", 3) == 0) ? kLangSwe : kLangEng;
+}
+
+void saveLanguage(int lang)
+{
+    const std::wstring dir = presetFolder();
+    if (dir.empty()) return;
+    FILE* f = _wfopen((dir + L"\\language.txt").c_str(), L"wb");
+    if (!f) return;
+    std::fputs(lang == kLangSwe ? "SWE" : "ENG", f);
+    std::fclose(f);
 }
 
 bool fileExists(const std::wstring& path)

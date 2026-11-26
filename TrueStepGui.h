@@ -55,6 +55,8 @@ struct GuiHost
     virtual void beginEdit(int /*index*/) {}
     virtual void endEdit(int /*index*/) {}
     virtual const char* presetName() { return ""; }
+    virtual int language() { return 0; }                 // 0 = ENG, 1 = SWE (manualen)
+    virtual void setLanguage(int) {}
     virtual int bankNumber() { return 1; }               // vald Random-bank (1, 2, 3 ...)
     virtual bool bankActive() { return false; }          // PRESET-pilarna bläddrar i banken
     virtual int playPos() { return -1; }                // steg * 2 + halva, -1 = står still
@@ -376,7 +378,7 @@ public:
     int cursorAt(int x, int y) const
     {
         if (overLogo(x, y)) return kCurHand;
-        if (showBack) return btnBack_.hit(x, y) ? kCurHand : kCurArrow;
+        if (showBack) return (btnBack_.hit(x, y) || langEng_.hit(x, y) || langSwe_.hit(x, y)) ? kCurHand : kCurArrow;
         if (presetPrev_.hit(x, y) || presetNext_.hit(x, y) || btnSave_.hit(x, y) || btnLoad_.hit(x, y) || btnRandom_.hit(x, y) || btnBank_.hit(x, y)) return kCurHand;
         if (y >= kSplitY && y < kSplitY + kSplitH && x >= kLeft && x < kLeft + kNumSteps * kCellW) return kCurHand;
         int s, h; bool isPan;
@@ -424,6 +426,7 @@ private:
     Rect btnLoad_ = { colX(2) + 106.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
     Rect btnRandom_ = { colX(0) + 144.0f, kRow2Y + 135.0f, 87.0f, 34.0f };
     Rect btnBank_ = { colX(0) + 239.0f, kRow2Y + 135.0f, 33.0f, 34.0f };
+    Rect langEng_ = { 0, 0, 0, 0 }, langSwe_ = { 0, 0, 0, 0 };   // sätts vid ritning av baksidan
     Rect btnBack_ = { 760.0f, 114.0f, 100.0f, 34.0f };
 
     Drag drag_ = kDragNone;
@@ -792,6 +795,8 @@ private:
 
     void backMouseDown(int x, int y)
     {
+        if (langEng_.hit(x, y) && host_->language() != kLangEng) { host_->setLanguage(kLangEng); contentH_ = 0.0f; scroll_ = 0.0f; return; }
+        if (langSwe_.hit(x, y) && host_->language() != kLangSwe) { host_->setLanguage(kLangSwe); contentH_ = 0.0f; scroll_ = 0.0f; return; }
         if (x >= kThumbX - 6 && x <= kThumbX + kThumbW + 6 && y >= kManTop && y <= kManBottom && maxScrollPx() > 0.0f) {
             const float viewH = kManBottom - kManTop, maxScroll = maxScrollPx();
             const float th = std::max(30.0f, viewH * viewH / contentH_);
@@ -810,11 +815,13 @@ private:
     }
 
     // Ritar (eller bara mäter, om draw = false) manualen; returnerar total höjd
-    static float layoutManual(Canvas& c, float y0, bool draw)
+    float layoutManual(Canvas& c, float y0, bool draw)
     {
         float y = y0;
-        for (int i = 0; i < kManualCount; ++i) {
-            const ManualPara& mp = kManual[i];
+        int count = 0;
+        const ManualPara* man = manualFor(host_->language(), count);
+        for (int i = 0; i < count; ++i) {
+            const ManualPara& mp = man[i];
             float size; int style; Rgba color;
             manualFont(mp.kind, size, style, color);
             if (mp.kind == kManHead && i > 0) y += 14.0f;
@@ -835,8 +842,9 @@ private:
             std::snprintf(t, sizeof t, "TrueStep v%s", kVersionText);
             c.text(38, 92, 400, t, 22, kStyleBold, theme::text, kAlignNear);
         }
-        c.text(38, 123, 700, "Rhythmic Step Filter Gate  \xC2\xB7  VST2  \xC2\xB7  Windows 7 and later", 13, kStyleItalic, theme::text,
-               kAlignNear);
+        const bool sv = host_->language() == kLangSwe;   // bara manualtexten byter språk; resten av fönstret är engelskt
+        c.text(38, 123, 700, "Rhythmic Step Filter Gate  \xC2\xB7  VST2 / VST3  \xC2\xB7  Windows 7 and later", 13, kStyleItalic,
+               theme::text, kAlignNear);
         {
             // Fredrik Frigren | Copyright (c) 2F Productions 2026 | info@2f.se
             // Copyright-tecknet ritas själv (ring + C) så att det blir tydligt i alla storlekar.
@@ -857,6 +865,21 @@ private:
         // Manual
         drawPanel(c, 20.0f, 185.0f, 860.0f, 435.0f);
         c.text(38, 192, 200, "MANUAL", 14, kStyleBold, theme::textDim, kAlignNear);
+        {
+            // ENG | SWE efter ordet MANUAL; vald språk i cyan, det andra dämpat
+            const float wMan = c.textWidth("MANUAL", 14, kStyleBold);
+            const float wEng = c.textWidth("ENG", 12, kStyleBold), wSwe = c.textWidth("SWE", 12, kStyleBold);
+            const float wBar = c.textWidth("|", 12, kStyleBold);
+            float lx = 38.0f + wMan + 16.0f;
+            const float ly = 193.0f;
+            c.text(lx, ly, 60, "ENG", 12, kStyleBold, sv ? theme::textDim : theme::cyan, kAlignNear);
+            langEng_ = { lx - 3.0f, ly - 2.0f, wEng + 6.0f, 20.0f };
+            lx += wEng + 8.0f;
+            c.text(lx, ly, 20, "|", 12, kStyleBold, theme::textDim, kAlignNear);
+            lx += wBar + 8.0f;
+            c.text(lx, ly, 60, "SWE", 12, kStyleBold, sv ? theme::cyan : theme::textDim, kAlignNear);
+            langSwe_ = { lx - 3.0f, ly - 2.0f, wSwe + 6.0f, 20.0f };
+        }
         c.text(380, 195, 478, "scroll with the mouse wheel  \xC2\xB7  click the logo or BACK to return", 11, kStyleRegular,
                theme::textDim, kAlignFar);
         if (contentH_ <= 0.0f) contentH_ = layoutManual(c, 0.0f, false);
