@@ -1,0 +1,63 @@
+name: build
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch Steinberg VST 3 SDK (MIT license)
+        shell: pwsh
+        run: |
+          git clone --depth 1 --branch v3.8.1_build_84 https://github.com/steinbergmedia/vst3sdk.git vst3sdk
+          git -C vst3sdk submodule update --init --depth 1 base pluginterfaces public.sdk cmake
+      - name: Configure (Visual Studio 2022, toolset v143 = Windows 7-kompatibel)
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -T v143 -DTRUESTEP_VST3_SDK="${{ github.workspace }}/vst3sdk"
+      - name: Build (VST2 + VST3; Steinbergs validator körs på VST3-versionen)
+        run: cmake --build build --config Release
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure
+      - name: Check Windows 7 compatibility (no newer system DLLs or functions)
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          $dumpbin = Get-ChildItem -Path "$vs\VC\Tools\MSVC" -Recurse -Filter dumpbin.exe | Where-Object { $_.FullName -like "*Hostx64\x64*" } | Select-Object -First 1
+          $files = @("build\Release\TrueStep.dll", "build\VST3\Release\TrueStep.vst3\Contents\x86_64-win\TrueStep.vst3")
+          foreach ($f in $files) {
+            Write-Host "== $f"
+            $deps = & $dumpbin.FullName /dependents $f
+            $deps
+            if ($deps -match "api-ms-win|VCRUNTIME|MSVCP|ucrtbase") { throw "$f needs DLLs that Windows 7 may lack" }
+            $imports = & $dumpbin.FullName /imports $f
+            if ($imports -match "GetSystemTimePreciseAsFileTime|CreateFile2|GetCurrentThreadStackLimits|PathCch|SetThreadDescription|WaitOnAddress|WakeByAddress|GetOverlappedResultEx") {
+              throw "$f uses Windows functions that Windows 7 lacks"
+            }
+          }
+      - name: Package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item build\Release\TrueStep.dll dist\
+          Copy-Item -Recurse build\VST3\Release\TrueStep.vst3 dist\
+          Copy-Item LICENSE-VST3-SDK.txt dist\
+          Get-ChildItem -Recurse dist | Select-Object FullName
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TrueStep-win64
+          path: dist
+      - name: Render GUI screenshots
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force shots | Out-Null
+          Push-Location shots
+          & ..\build\Release\RenderGui.exe
+          if ($LASTEXITCODE -ne 0) { throw "RenderGui failed" }
+          Pop-Location
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: TrueStep-screenshots
+          path: shots
+          if-no-files-found: ignore
