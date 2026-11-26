@@ -409,6 +409,9 @@ struct FakeGuiHost : GuiHost
     void endEdit(int) override { ++ends; }
     const char* presetName() override { return name.c_str(); }
     int playPos() override { return pos; }
+    bool info = true;
+    bool infoOn() override { return info; }
+    void setInfoOn(bool b) override { info = b; }
     int lang = 0;
     int language() override { return lang; }
     void setLanguage(int l) override { lang = l; }
@@ -677,12 +680,57 @@ static void testHumanize()
     CHECK(fin);
 }
 
+static void testInfoBox()
+{
+    // alla infotexter finns på båda språken och ryms på två rader (max ca 112 tecken)
+    for (int lang = 0; lang < 2; ++lang)
+        for (int id = 1; id < kTipCount; ++id) {
+            const std::string s = tipText(id, lang);
+            CHECK(!s.empty() && s.size() <= 125);   // UTF-8-bytes; svenska tecken räknas dubbelt
+        }
+    CHECK(std::strcmp(tipText(0, 0), "") == 0 && std::strcmp(tipText(9999, 0), "") == 0);
+
+    FakeGuiHost h; StepGui g(&h);
+    auto shows = [&](const char* text, uint32_t t0) { CountCanvas c; g.draw(c, t0); return c.has(typeset(text).c_str()); };
+    g.mouseMove(99, 516, false);                                      // DRY/WET-ratten
+    CHECK(!shows(tipText(kTipDryWet, 0), 1000));                      // först efter en kort paus
+    CHECK(!shows(tipText(kTipDryWet, 0), 1200));
+    CHECK(shows(tipText(kTipDryWet, 0), 1600));
+    g.mouseMove(193, 492, false);                                     // S/H-ratten: ny text, ny paus
+    CHECK(!shows(tipText(kTipSH, 0), 1700));
+    CHECK(shows(tipText(kTipSH, 0), 2300));
+    g.mouseMove(300, 5, false); { CountCanvas c; g.draw(c, 2400); CHECK(!c.has(typeset(tipText(kTipSH, 0)).c_str())); }   // pekar på inget
+    // staplarnas kanter ger olika texter
+    g.mouseMove(185, 200, false); CHECK(g.mouseDown(5, 5, false) == StepGui::kActNone);
+    h.lang = 1;
+    g.mouseMove(228, 569, false); shows("", 3000);
+    CHECK(shows(tipText(kTipRandom, 1), 3600));                       // svenska när SWE är valt
+    CHECK(!shows(tipText(kTipRandom, 0), 3601));
+    h.lang = 0;
+    g.mouseLeave(); CHECK(!shows(tipText(kTipRandom, 0), 5000));
+    // dra döljer rutan; av = ingen ruta
+    g.mouseMove(99, 516, false); shows("", 6000); CHECK(shows(tipText(kTipDryWet, 0), 6600));
+    h.info = false; CHECK(!shows(tipText(kTipDryWet, 0), 6700)); h.info = true;
+    g.mouseDown(99, 516, false); g.mouseMove(99, 480, false);
+    CHECK(!shows(tipText(kTipDryWet, 0), 7600)); g.mouseUp();
+    // baksidan: INFO ON | OFF
+    g.mouseDown(40, 25, false); g.mouseUp();
+    CHECK(g.showBack);
+    { CountCanvas c; g.draw(c, 8000); CHECK(c.has("INFO") && c.has("ON") && c.has("OFF")); }
+    CHECK(h.info);
+    bool toggled = false;
+    for (int x = 130; x < 420 && !toggled; x += 3) { g.mouseDown(x, 200, false); g.mouseUp(); if (!h.info) toggled = true; if (h.lang) { h.lang = 0; } }
+    CHECK(toggled);                                                   // OFF stänger rutan
+    g.mouseDown(40, 25, false); g.mouseUp();
+}
+
 static void testTypeset()
 {
     const std::string nbsp = "\xC2\xA0", nbh = "\xE2\x80\x91";
     CHECK(typeset("levels of 0 dB here") == "levels of" + nbsp + "0" + nbsp + "dB" + nbsp + "here");                 // tal + enhet hålls ihop
     CHECK(typeset("from -24 to +12 dB and 20 kHz") == "from -24 to" + nbsp + "+12" + nbsp + "dB" + nbsp + "and 20" + nbsp + "kHz");
-    CHECK(typeset("limit 50 % now") == "limit 50" + nbsp + "% now");
+    CHECK(typeset("limit 50 % now") == "limit" + nbsp + "50" + nbsp + "% now");
+    CHECK(typeset("saves Random 0001 here").find("Random" + nbsp + "0001") != std::string::npos);
     CHECK(typeset("delas i 32-delar nu") == "delas i" + nbsp + "32" + nbh + "delar nu");
     CHECK(typeset("slut. En takt i 4/4 \xC3\xA4r").find("En" + nbsp + "takt") != std::string::npos);   // ensamt "En" hindras
     CHECK(typeset("slut. En takt").find("slut.") == 0);
@@ -857,6 +905,7 @@ int main()
     testPresetsAndState();
     testGui();
     testHumanize();
+    testInfoBox();
     testTypeset();
     testRandomize();
     testSampleHold();

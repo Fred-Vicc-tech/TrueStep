@@ -59,6 +59,8 @@ struct GuiHost
     virtual const char* presetName() { return ""; }
     virtual int language() { return 0; }                 // 0 = ENG, 1 = SWE (manualen)
     virtual void setLanguage(int) {}
+    virtual bool infoOn() { return true; }               // infotext-rutan högst upp
+    virtual void setInfoOn(bool) {}
     virtual int bankNumber() { return 1; }               // vald Random-bank (1, 2, 3 ...)
     virtual bool bankActive() { return false; }          // PRESET-pilarna bläddrar i banken
     virtual int playPos() { return -1; }                // steg * 2 + halva, -1 = står still
@@ -212,6 +214,8 @@ inline std::string typeset(const char* in)
                     if (s.compare(i + 1, L, u) == 0 && (i + 1 + L >= n || !isLetter((unsigned char)s[i + 1 + L]))) bind = true;
                 }
             }
+            // ord + tal hålls ihop ("Random 0001", "bank 2")
+            if (isLetter((unsigned char)s[i - 1]) && s[i + 1] >= '0' && s[i + 1] <= '9') bind = true;
             // kort ord före mellanslaget
             size_t b = i;
             while (b > 0 && isLetter((unsigned char)s[b - 1])) --b;
@@ -231,6 +235,75 @@ inline std::string typeset(const char* in)
         out += c;
     }
     return out;
+}
+
+// Infotexter (rutan högst upp när musen vilar över något). Max ca 110 tecken så att de ryms på två rader.
+enum Tip {
+    kTipNone = 0, kTipLogo, kTipMeter, kTipGridTitle, kTipStepNum, kTipGrid, kTipLen, kTipLP, kTipHP, kTipSplit,
+    kTipPan, kTipRes, kTipDryWet, kTipOutput, kTipOver, kTipSH, kTipHuman, kTipRandom, kTipBank, kTipPreset,
+    kTipSave, kTipLoad, kTipStepPanel, kTipBack, kTipLang, kTipInfo, kTipCount
+};
+
+inline const char* tipText(int id, int lang)
+{
+    static const char* const en[kTipCount] = {
+        "",
+        "Click the logo to see the credits and the manual.",
+        "Lights up when sound is passing through TrueStep.",
+        "STEP GRID: one bar in 16 steps. Drag the bars to shape the sound of each step.",
+        "The number of the step in the bar. The step playing right now lights up in orange.",
+        "Drag the bar to move both filters. Double-click the column to reset the step.",
+        "LENGTH: how long the gate stays open in this step. Drag the right edge.",
+        "LOWPASS: everything above the top edge is filtered away. Drag the top edge.",
+        "HIGHPASS: everything below the bottom edge is filtered away. Drag the bottom edge.",
+        "Splits the step in two 32nd notes, each with its own settings. Click again to join them.",
+        "PAN: stereo position of the step, from 50L to 50R. Click a bar to choose.",
+        "RES: resonance (0 to 8) at the lowpass edge. It is heard best on longer steps.",
+        "DRY/WET: mixes the original sound (0 %) with the processed sound (100 %).",
+        "OUTPUT: level after the effect, -24 to +12 dB. Double-click to reset to 0 dB.",
+        "Lights up red if the output goes over 0 dBFS.",
+        "S/H: sample and hold. A new random cutoff for every step, held until the next one.",
+        "HUMANIZE: moves each step a little earlier or later, up to 25 ms, for a looser feel.",
+        "RANDOMIZE: invents a new pattern and saves it as Random 0001, 0002 ... in the Random folder.",
+        "Browse your saved Random patterns, bank by bank. Press again for the next bank.",
+        "PRESET: the arrows step through the factory presets and then your own. SAVE and LOAD handle files.",
+        "SAVE: stores your sound as a preset file (.tsp). You choose the name and the folder.",
+        "LOAD: opens a preset file (.tsp).",
+        "STEP: the settings of the step you last changed.",
+        "Back to the plugin.",
+        "Language of the manual and of these info texts.",
+        "Shows or hides this info box when you point at things."
+    };
+    static const char* const sv[kTipCount] = {
+        "",
+        "Klicka på loggan för credits och manual.",
+        "Lyser när ljud passerar genom TrueStep.",
+        "STEP GRID: en takt i 16 steg. Dra i staplarna för att forma ljudet i varje steg.",
+        "Stegets nummer i takten. Steget som spelas just nu lyser orange.",
+        "Dra i staplen för att flytta båda filtren. Dubbelklicka på kolumnen för att nollställa steget.",
+        "LENGTH: hur länge gaten är öppen i steget. Dra i högerkanten.",
+        "LOWPASS: allt ovanför överkanten filtreras bort. Dra i överkanten.",
+        "HIGHPASS: allt under underkanten filtreras bort. Dra i underkanten.",
+        "Delar steget i två 32-delar med egna inställningar. Klicka igen för att slå ihop dem.",
+        "PAN: stegets stereoposition, från 50L till 50R. Klicka på en stapel för att välja.",
+        "RES: resonans (0 till 8) vid lowpass-kanten. Hörs bäst på längre steg.",
+        "DRY/WET: blandar originalljudet (0 %) med det bearbetade ljudet (100 %).",
+        "OUTPUT: nivån efter effekten, -24 till +12 dB. Dubbelklicka för att nollställa till 0 dB.",
+        "Lyser rött om utnivån går över 0 dBFS.",
+        "S/H: sample and hold. En ny slumpad cutoff för varje steg, som hålls till nästa.",
+        "HUMANIZE: flyttar varje steg lite tidigare eller senare, upp till 25 ms, för en lösare känsla.",
+        "RANDOMIZE: hittar på ett nytt mönster och sparar det som Random 0001, 0002 ... i Random-mappen.",
+        "Bläddra bland dina sparade Random-mönster, bank för bank. Tryck igen för nästa bank.",
+        "PRESET: pilarna bläddrar bland fabrikspresets och sedan dina egna. SAVE och LOAD hanterar filer.",
+        "SAVE: sparar ljudet som en presetfil (.tsp). Du väljer namn och mapp.",
+        "LOAD: öppnar en presetfil (.tsp).",
+        "STEP: inställningarna för steget du senast ändrade.",
+        "Tillbaka till pluginet.",
+        "Språk för manualen och för de här infotexterna.",
+        "Visar eller döljer infotexten när du pekar på något."
+    };
+    if (id < 0 || id >= kTipCount) return "";
+    return lang == kLangSwe ? sv[id] : en[id];
 }
 
 class StepGui
@@ -278,8 +351,8 @@ public:
         }
         c.ellipse(869.0f, 42.0f, 7.0f, 7.0f, signal ? theme::cyan : argb(255, 50, 54, 58), kNone, 0.0f);
 
-        if (showBack) { drawBack(c); return; }
-        drawFront(c, over);
+        if (showBack) drawBack(c); else drawFront(c, over);
+        drawTip(c, nowMs);
     }
 
     // --- Mus -------------------------------------------------------------
@@ -287,6 +360,7 @@ public:
 
     Action mouseDown(int x, int y, bool dbl)
     {
+        tipId_ = 0; tipPending_ = false;
         endEdits();
         drag_ = kDragNone;
 
@@ -379,6 +453,7 @@ public:
 
     void mouseMove(int x, int y, bool shift)
     {
+        updateHover(x, y);
         if (drag_ == kDragThumb) {
             const float viewH = kManBottom - kManTop, maxScroll = maxScrollPx();
             const float th = std::max(30.0f, viewH * viewH / std::max(contentH_, 1.0f));
@@ -388,6 +463,8 @@ public:
         }
         if (drag_ != kDragNone) dragMove(x, y, shift);
     }
+
+    void mouseLeave() { tipId_ = 0; tipPending_ = false; }
 
     void mouseUp()
     {
@@ -424,7 +501,7 @@ public:
     int cursorAt(int x, int y) const
     {
         if (overLogo(x, y)) return kCurHand;
-        if (showBack) return (btnBack_.hit(x, y) || langEng_.hit(x, y) || langSwe_.hit(x, y)) ? kCurHand : kCurArrow;
+        if (showBack) return (btnBack_.hit(x, y) || langEng_.hit(x, y) || langSwe_.hit(x, y) || infoOn_.hit(x, y) || infoOff_.hit(x, y)) ? kCurHand : kCurArrow;
         if (presetPrev_.hit(x, y) || presetNext_.hit(x, y) || btnSave_.hit(x, y) || btnLoad_.hit(x, y) || btnRandom_.hit(x, y) || btnBank_.hit(x, y)) return kCurHand;
         if (y >= kSplitY && y < kSplitY + kSplitH && x >= kLeft && x < kLeft + kNumSteps * kCellW) return kCurHand;
         int s, h; bool isPan;
@@ -473,7 +550,10 @@ private:
     Rect btnRandom_ = { colX(0) + 144.0f, kRow2Y + 135.0f, 87.0f, 34.0f };
     Rect btnBank_ = { colX(0) + 239.0f, kRow2Y + 135.0f, 33.0f, 34.0f };
     std::vector<std::string> typeEn_, typeSv_;   // manualtexten efter typografi (se typeset)
-    Rect langEng_ = { 0, 0, 0, 0 }, langSwe_ = { 0, 0, 0, 0 };   // sätts vid ritning av baksidan
+    Rect langEng_ = { 0, 0, 0, 0 }, langSwe_ = { 0, 0, 0, 0 }, infoOn_ = { 0, 0, 0, 0 }, infoOff_ = { 0, 0, 0, 0 };
+    int tipId_ = 0;
+    bool tipPending_ = false;
+    uint32_t tipSince_ = 0;   // sätts vid ritning av baksidan
     Rect btnBack_ = { 760.0f, 114.0f, 100.0f, 34.0f };
 
     Drag drag_ = kDragNone;
@@ -535,6 +615,79 @@ private:
         b.yBot = std::floor(yFromVal(hp) + 0.5f);
         return b;
     }
+    // --- Infotext: vad pekar musen på? ---
+    int tipAt(int x, int y) const
+    {
+        if (overLogo(x, y)) return kTipLogo;
+        if (showBack) {
+            if (btnBack_.hit(x, y)) return kTipBack;
+            if (langEng_.hit(x, y) || langSwe_.hit(x, y)) return kTipLang;
+            if (infoOn_.hit(x, y) || infoOff_.hit(x, y)) return kTipInfo;
+            const float dx = x - 869.0f, dy = y - 42.0f;
+            return (dx * dx + dy * dy <= 100.0f) ? kTipMeter : kTipNone;
+        }
+        { const float dx = x - 869.0f, dy = y - 42.0f; if (dx * dx + dy * dy <= 100.0f) return kTipMeter; }
+        for (int k = 0; k < 4; ++k) {
+            const KnobDef& kd = knobs_[k];
+            const float dx = x - kd.cx, dy = y - kd.cy, rr = kd.r + 6.0f;
+            if (dx * dx + dy * dy > rr * rr) continue;
+            return kd.param == kParamMix ? kTipDryWet : kd.param == kParamOutput ? kTipOutput
+                 : kd.param == kParamHumanize ? kTipHuman : kTipSH;
+        }
+        if (btnRandom_.hit(x, y)) return kTipRandom;
+        if (btnBank_.hit(x, y)) return kTipBank;
+        if (presetPrev_.hit(x, y) || presetNext_.hit(x, y) || presetBox_.hit(x, y)) return kTipPreset;
+        if (btnSave_.hit(x, y)) return kTipSave;
+        if (btnLoad_.hit(x, y)) return kTipLoad;
+        const Rect over = { colX(3) + 30.0f, kRow2Y + 167.0f, 96.0f, 18.0f };
+        if (over.hit(x, y)) return kTipOver;
+        const Rect tDry = { colX(0) + 12.0f, kRow2Y + 6.0f, 110.0f, 26.0f }, tOut = { colX(3) + 12.0f, kRow2Y + 6.0f, 90.0f, 26.0f },
+                   tPre = { colX(2) + 12.0f, kRow2Y + 6.0f, 100.0f, 26.0f }, pStep = { colX(1), kRow2Y, colW(1), kRow2H },
+                   tGrid = { 36.0f, 94.0f, 100.0f, 22.0f }, rowNum = { kLeft, 110.0f, kNumSteps * kCellW, 20.0f };
+        if (tDry.hit(x, y)) return kTipDryWet;
+        if (tOut.hit(x, y)) return kTipOutput;
+        if (tPre.hit(x, y)) return kTipPreset;
+        if (pStep.hit(x, y)) return kTipStepPanel;
+        if (tGrid.hit(x, y)) return kTipGridTitle;
+        if (rowNum.hit(x, y)) return kTipStepNum;
+        if (x >= 20 && x < kLeft + kNumSteps * kCellW) {
+            if (y >= kSplitY && y < kSplitY + kSplitH) return kTipSplit;
+            if (y >= kPanY && y <= kPanY + kPanH) return kTipPan;
+            if (y >= kResY && y <= kResY + kResH) return kTipRes;
+        }
+        int s, h;
+        if (hitCell(x, y, s, h)) {
+            const Bar b = getBar(s, h);
+            const float T = 6.0f;
+            if ((x >= b.bx1 - T && x <= b.bx1 + T) && (y >= b.yTop - T && y <= b.yBot + T)) return kTipLen;
+            if (x >= b.bx0 && x <= b.bx1 && std::fabs(y - b.yTop) <= T) return kTipLP;
+            if (x >= b.bx0 && x <= b.bx1 && std::fabs(y - b.yBot) <= T) return kTipHP;
+            return kTipGrid;
+        }
+        return kTipNone;
+    }
+
+    void updateHover(int x, int y)
+    {
+        const int t = tipAt(x, y);
+        if (t != tipId_) { tipId_ = t; tipPending_ = true; }
+    }
+
+    // Ritar infotext-rutan (mellan loggan och versionsnumret) när musen vilat en stund
+    void drawTip(Canvas& c, uint32_t nowMs)
+    {
+        if (tipPending_) { tipSince_ = nowMs; tipPending_ = false; }
+        if (!host_->infoOn() || tipId_ == kTipNone || drag_ != kDragNone) return;
+        if ((int32_t)(nowMs - tipSince_) < 450) return;
+        const std::string txt = typeset(tipText(tipId_, host_->language()));
+        if (txt.empty()) return;
+        const float bx = 270.0f, by = 21.0f, bw = 384.0f, bh = 50.0f;
+        c.roundRect(bx, by, bw, bh, 12.0f, theme::box, theme::panelEdge, 1.0f);
+        const float tw = bw - 22.0f;
+        const float th = c.textHeight(txt.c_str(), tw, 14.0f, kStyleRegular);
+        c.text(bx + 11.0f, by + (bh - th) / 2.0f - 0.5f, tw, txt.c_str(), 14.0f, kStyleRegular, argb(255, 150, 153, 157), kAlignNear);
+    }
+
     bool hitCell(int x, int y, int& s, int& h) const
     {
         if (x < kLeft || x >= kLeft + kNumSteps * kCellW) return false;
@@ -842,6 +995,8 @@ private:
 
     void backMouseDown(int x, int y)
     {
+        if (infoOn_.hit(x, y)) { host_->setInfoOn(true); return; }
+        if (infoOff_.hit(x, y)) { host_->setInfoOn(false); return; }
         if (langEng_.hit(x, y) && host_->language() != kLangEng) { host_->setLanguage(kLangEng); contentH_ = 0.0f; scroll_ = 0.0f; return; }
         if (langSwe_.hit(x, y) && host_->language() != kLangSwe) { host_->setLanguage(kLangSwe); contentH_ = 0.0f; scroll_ = 0.0f; return; }
         if (x >= kThumbX - 6 && x <= kThumbX + kThumbW + 6 && y >= kManTop && y <= kManBottom && maxScrollPx() > 0.0f) {
@@ -932,6 +1087,19 @@ private:
             lx += wBar + 8.0f;
             c.text(lx, ly, 60, "SWE", 12, kStyleBold, sv ? theme::cyan : theme::textDim, kAlignNear);
             langSwe_ = { lx - 3.0f, ly - 2.0f, wSwe + 6.0f, 20.0f };
+            // INFO ON | OFF: infotext-rutan högst upp
+            lx += wSwe + 30.0f;
+            c.text(lx, ly, 60, "INFO", 12, kStyleBold, theme::textDim, kAlignNear);
+            lx += c.textWidth("INFO", 12, kStyleBold) + 14.0f;
+            const bool io = host_->infoOn();
+            const float wOn = c.textWidth("ON", 12, kStyleBold), wOff = c.textWidth("OFF", 12, kStyleBold);
+            c.text(lx, ly, 40, "ON", 12, kStyleBold, io ? theme::cyan : theme::textDim, kAlignNear);
+            infoOn_ = { lx - 3.0f, ly - 2.0f, wOn + 6.0f, 20.0f };
+            lx += wOn + 8.0f;
+            c.text(lx, ly, 20, "|", 12, kStyleBold, theme::textDim, kAlignNear);
+            lx += wBar + 8.0f;
+            c.text(lx, ly, 40, "OFF", 12, kStyleBold, io ? theme::textDim : theme::cyan, kAlignNear);
+            infoOff_ = { lx - 3.0f, ly - 2.0f, wOff + 6.0f, 20.0f };
         }
         c.text(380, 195, 478, "scroll with the mouse wheel  \xC2\xB7  click the logo or BACK to return", 11, kStyleRegular,
                theme::textDim, kAlignFar);

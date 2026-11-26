@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.0
+- Info box at the top (between the logo and the version): a short explanation appears when the pointer rests on a knob, button, bar or heading. It follows the manual language (ENG | SWE) and can be switched off with INFO ON | OFF on the back page (remembered).
+
 ## 1.5.2
 - Fix: opening a saved project in Live now keeps the saved sound. Live asks for program 0 (or the same factory preset) right after loading; this no longer overwrites your own preset, a Random pattern or your edits of a factory preset with Default Gate.
 

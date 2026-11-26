@@ -177,6 +177,9 @@ static bool g_bankMode = false;
 static int g_lang = -1;
 int loadLanguage();
 void saveLanguage(int lang);
+static int g_info = -1;   // infotext-rutan: 1 = på, 0 = av (Documents\\TrueStep Presets\\info.txt)
+bool loadInfoOn();
+void saveInfoOn(bool on);
 
 struct CoreGuiHost : GuiHost
 {
@@ -189,6 +192,8 @@ struct CoreGuiHost : GuiHost
     const char* presetName() override { return core->presetName; }
     int language() override { if (g_lang < 0) g_lang = loadLanguage(); return g_lang; }
     void setLanguage(int l) override { g_lang = (l == kLangSwe) ? kLangSwe : kLangEng; saveLanguage(g_lang); }
+    bool infoOn() override { if (g_info < 0) g_info = loadInfoOn() ? 1 : 0; return g_info != 0; }
+    void setInfoOn(bool on) override { g_info = on ? 1 : 0; saveInfoOn(on); }
     int bankNumber() override { return g_bank; }
     bool bankActive() override { return g_bankMode; }
     int playPos() override { return core->playPos.load(); }
@@ -261,6 +266,28 @@ void saveLanguage(int lang)
     FILE* f = _wfopen((dir + L"\\language.txt").c_str(), L"wb");
     if (!f) return;
     std::fputs(lang == kLangSwe ? "SWE" : "ENG", f);
+    std::fclose(f);
+}
+
+bool loadInfoOn()
+{
+    const std::wstring dir = presetFolder();
+    if (dir.empty()) return true;
+    FILE* f = _wfopen((dir + L"\\info.txt").c_str(), L"rb");
+    if (!f) return true;   // standard: på
+    char buf[4] = { 0 };
+    const size_t n = std::fread(buf, 1, 3, f);
+    std::fclose(f);
+    return !(n == 3 && std::memcmp(buf, "OFF", 3) == 0);
+}
+
+void saveInfoOn(bool on)
+{
+    const std::wstring dir = presetFolder();
+    if (dir.empty()) return;
+    FILE* f = _wfopen((dir + L"\\info.txt").c_str(), L"wb");
+    if (!f) return;
+    std::fputs(on ? "ON" : "OFF", f);
     std::fclose(f);
 }
 
@@ -589,6 +616,7 @@ LRESULT CALLBACK windowProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
         // Musen lämnade fönstret: ge tillbaka tangentbordsfokus till värdprogrammet
         if (ed) {
             ed->tracking = false;
+            ed->gui.mouseLeave();
             if (GetFocus() == hwnd && ed->prevFocus && IsWindow(ed->prevFocus)) SetFocus(ed->prevFocus);
             ed->prevFocus = nullptr;
         }

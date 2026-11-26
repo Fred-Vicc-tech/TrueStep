@@ -80,6 +80,11 @@ static const ManualPara kManual[] = {
                 "its shape. In a split step each 1/32 gets its own value. The values are tied to the position in the song, so playback "
                 "and export sound the same every time, but they never repeat from bar to bar." },
 
+    { kManHead, "INFO BOX" },
+    { kManBody, "When you rest the mouse pointer on a knob, a button, a bar or a heading, a short explanation appears in the box at the top "
+                "of the window. It follows the language you chose for the manual (ENG | SWE). If you get tired of it, switch it off "
+                "with INFO ON | OFF on this page, next to ENG | SWE." },
+
     { kManHead, "RANDOMIZE" },
     { kManBody, "The RANDOMIZE button under HUMANIZE invents a whole new pattern: step lengths, filters, RES, PAN and 1/32 splits. "
                 "DRY/WET, OUTPUT and HUMANIZE are not changed. The patterns are made to play well: most steps are heard, the filter "
@@ -173,6 +178,11 @@ static const ManualPara kManualSv[] = {
                 "lowpass upp och ner kring dem (och highpass också, om du använder den), så ett rytmmönster du byggt behåller sin form. "
                 "I ett delat steg får varje 1/32 ett eget värde. Värdena är knutna till positionen i låten, så uppspelning och export "
                 "låter likadant varje gång, men de upprepas aldrig från takt till takt." },
+
+    { kManHead, "INFORUTAN" },
+    { kManBody, "När du låter muspekaren vila på en ratt, en knapp, en stapel eller en rubrik visas en kort förklaring i rutan högst upp "
+                "i fönstret. Den följer språket du valt för manualen (ENG | SWE). Om du tröttnar på den stänger du av den med "
+                "INFO ON | OFF på den här sidan, bredvid ENG | SWE." },
 
     { kManHead, "RANDOMIZE" },
     { kManBody, "Knappen RANDOMIZE under HUMANIZE hittar på ett helt nytt mönster: steglängder, filter, RES, PAN och 1/32-delningar. "
