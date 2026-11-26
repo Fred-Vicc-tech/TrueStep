@@ -511,13 +511,13 @@ static void testGui()
     CHECK(h.p[paramPan(3, 1)] == valueFromSlot(8) && h.p[paramPan(3, 0)] == valueFromSlot(4));
 
     // 12) rattar: DRY/WET (center 123,509) och OUTPUT (center 777,509)
-    g.mouseDown(92, 509, false); g.mouseMove(92, 459, false); g.mouseUp();
+    g.mouseDown(99, 509, false); g.mouseMove(99, 459, false); g.mouseUp();
     CHECK(near_(h.p[kParamMix], 1.0, 1e-6));                   // redan på max
-    g.mouseDown(92, 509, false); g.mouseMove(92, 559, false); g.mouseUp();
+    g.mouseDown(99, 509, false); g.mouseMove(99, 559, false); g.mouseUp();
     CHECK(near_(h.p[kParamMix], 0.8, 1e-4));                   // 50 px ner = -0,2
-    g.mouseDown(92, 509, false); g.mouseMove(92, 559, true); g.mouseUp();
+    g.mouseDown(99, 509, false); g.mouseMove(99, 559, true); g.mouseUp();
     CHECK(near_(h.p[kParamMix], 0.75, 1e-4));                  // Shift = 4 gånger finare (-0,05)
-    g.mouseDown(92, 509, true); g.mouseUp(); CHECK(h.p[kParamMix] == 1.0f);
+    g.mouseDown(99, 509, true); g.mouseUp(); CHECK(h.p[kParamMix] == 1.0f);
     g.mouseDown(777, 509, false); g.mouseMove(341, 484, false); g.mouseUp();
     CHECK(near_(h.p[kParamOutput], defaultParam(kParamOutput) + 0.1, 1e-4));
     g.mouseDown(777, 509, true); g.mouseUp(); CHECK(near_(h.p[kParamOutput], defaultParam(kParamOutput), 1e-6));

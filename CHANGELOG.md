@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.1.1
+- GUI polish: pixel-exact (non-antialiased) step bars with new colours, straight-line top on PAN/RES level bars, wider DRY/WET box, narrower STEP box, subtitle lowered 2 px.
+
 ## 1.1.0
 - HUMANIZE knob (next to DRY/WET): steps start up to 25 ms earlier or later, following pink 1/f noise (Hennig et al. 2011). No added latency.
 - A preset saved or loaded in the window stays active in Live.

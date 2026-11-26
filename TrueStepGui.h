@@ -76,15 +76,16 @@ const Rgba btnOn      = argb(255, 10, 60, 80);
 const Rgba cellA      = argb(255, 20, 22, 25);
 const Rgba cellB      = argb(255, 27, 30, 34);
 const Rgba playhead   = argb(70, 255, 160, 40);
-const Rgba barFill    = argb(255, 0, 96, 118);
+const Rgba barFill    = argb(255, 8, 97, 112);
+const Rgba barEdgeL   = argb(255, 140, 146, 152);   // stapelns vänsterkant
 const Rgba barHandle  = argb(255, 190, 245, 255);
 const Rgba barFillOn  = argb(255, 120, 74, 8);
 const Rgba barHandleOn = argb(255, 255, 226, 170);
 const Rgba selBg      = argb(255, 8, 9, 10);
 const Rgba panOn      = argb(255, 255, 160, 40);
-const Rgba panOff     = argb(255, 96, 62, 22);
+const Rgba panOff     = argb(255, 110, 73, 26);
 const Rgba resOn      = argb(255, 0, 220, 255);
-const Rgba resOff     = argb(255, 0, 70, 84);
+const Rgba resOff     = argb(255, 8, 97, 112);
 const Rgba red        = argb(255, 255, 60, 60);
 const Rgba redOff     = argb(255, 70, 74, 80);
 } // namespace theme
@@ -219,7 +220,7 @@ public:
             c.text(21 + wTrue, 7, 300, "Step", 38, kStyleBoldItalic, theme::cyan, kAlignNear);
             logoRight_ = 21.0f + wTrue + wStep + 6.0f;     // loggan är klickbar (baksidan)
         }
-        c.text(21, 53, 320, "Rhythmic Step Filter Gate", 15, kStyleItalic, theme::text, kAlignNear);
+        c.text(21, 55, 320, "Rhythmic Step Filter Gate", 15, kStyleItalic, theme::text, kAlignNear);
         {
             char v[48];
             std::snprintf(v, sizeof v, "TrueStep  v%s", kVersionText);
@@ -394,22 +395,23 @@ private:
     struct Bar { float cx0, cx1, bx0, bx1, yTop, yBot; };
 
     // Layout
-    static constexpr float kPanelW = 206.0f;
-    static float colX(int i) { return 20.0f + i * 218.0f; }
+    // Rutorna på nedre raden: DRY/WET (bred), STEP (smal), PRESET, OUTPUT. Mellanrum 12 px.
+    static float colX(int i) { static const float x[4] = { 20.0f, 274.0f, 456.0f, 674.0f }; return x[i & 3]; }
+    static float colW(int i) { static const float w[4] = { 242.0f, 170.0f, 206.0f, 206.0f }; return w[i & 3]; }
     static constexpr float kMainY = 83.0f, kMainH = 322.0f;
     static constexpr float kLeft = 78.0f, kCellW = 48.0f, kGridTop = 134.0f, kGridH = 170.0f;
     static constexpr float kNumY = 112.0f;
     static constexpr float kSplitY = 312.0f, kSplitH = 20.0f;
-    static constexpr float kPanY = 338.0f, kPanH = 22.0f;
-    static constexpr float kResY = 364.0f, kResH = 22.0f;
+    static constexpr float kPanY = 337.0f, kPanH = 22.0f;
+    static constexpr float kResY = 365.0f, kResH = 22.0f;
     static constexpr float kRow2Y = 417.0f, kRow2H = 190.0f;
     static constexpr float kManX = 40.0f, kManW = 798.0f, kManTop = 224.0f, kManBottom = 600.0f;
     static constexpr float kThumbX = 852.0f, kThumbW = 6.0f;
 
     GuiHost* host_;
-    KnobDef knobs_[3] = { { kParamMix, colX(0) + 72.0f, kRow2Y + 92.0f, 44.0f },
+    KnobDef knobs_[3] = { { kParamMix, colX(0) + 79.0f, kRow2Y + 92.0f, 44.0f },
                           { kParamOutput, colX(3) + 103.0f, kRow2Y + 92.0f, 44.0f },
-                          { kParamHumanize, colX(0) + 160.0f, kRow2Y + 92.0f, 20.0f } };
+                          { kParamHumanize, colX(0) + 187.0f, kRow2Y + 92.0f, 20.0f } };
     Rect presetPrev_ = { colX(2) + 14.0f, kRow2Y + 44.0f, 30.0f, 30.0f };
     Rect presetNext_ = { colX(2) + 162.0f, kRow2Y + 44.0f, 30.0f, 30.0f };
     Rect presetBox_ = { colX(2) + 48.0f, kRow2Y + 44.0f, 110.0f, 30.0f };
@@ -470,10 +472,10 @@ private:
         const float hp = host_->get(paramHP(s, h));
         float lp = host_->get(paramLP(s, h));
         if (lp < hp) lp = hp;
-        b.bx0 = b.cx0 + 1.0f;
-        b.bx1 = b.bx0 + len * ((b.cx1 - b.cx0) - 2.0f);
-        b.yTop = yFromVal(lp);
-        b.yBot = yFromVal(hp);
+        b.bx0 = b.cx0 + 1.0f;                                              // hela pixlar (ingen kantutjämning)
+        b.bx1 = b.bx0 + std::floor(len * ((b.cx1 - b.cx0) - 1.0f) + 0.5f);
+        b.yTop = std::floor(yFromVal(lp) + 0.5f);
+        b.yBot = std::floor(yFromVal(hp) + 0.5f);
         return b;
     }
     bool hitCell(int x, int y, int& s, int& h) const
@@ -489,7 +491,7 @@ private:
     {
         const float cx = kLeft + s * kCellW;
         if (isSplit(s)) { const float hw = kCellW / 2; x0 = cx + half * hw + 2.0f; x1 = cx + (half + 1) * hw - 2.0f; }
-        else { x0 = cx + 3.0f; x1 = cx + kCellW - 3.0f; }
+        else { x0 = cx + 3.0f; x1 = cx + kCellW - 2.0f; }
     }
     bool hitSelector(int x, int y, int& s, int& h, bool& isPan) const
     {
@@ -533,7 +535,7 @@ private:
         switch (drag_) {
         case kDragLen: {
             const Bar b = getBar(aStep_, aHalf_);
-            const float innerW = (b.cx1 - b.cx0) - 2.0f;
+            const float innerW = (b.cx1 - b.cx0) - 1.0f;
             float v = (x - (b.cx0 + 1.0f)) / innerW;
             v = v < 0.0f ? 0.0f : (v > 1.0f ? 1.0f : v);
             if (v < 0.03f) v = 0.0f;
@@ -620,16 +622,19 @@ private:
                 const Bar b = getBar(s, h);
                 const bool now = (s == ps && (sp ? h == ph : true));
                 const Rgba fill = now ? theme::barFillOn : theme::barFill;
-                const Rgba edge = now ? theme::orange : theme::cyan;
                 const Rgba handle = now ? theme::barHandleOn : theme::barHandle;
-                if (b.bx1 > b.bx0 + 1.0f) {
-                    c.fillRect(b.bx0, b.yTop, b.bx1 - b.bx0, b.yBot - b.yTop, fill);
-                    c.roundRect(b.bx0, b.yTop, b.bx1 - b.bx0, b.yBot - b.yTop, 0.0f, kNone, edge, 1.0f);
-                    c.fillRect(b.bx0, b.yTop, b.bx1 - b.bx0, 2.0f, handle);
-                    c.fillRect(b.bx0, b.yBot - 2.0f, b.bx1 - b.bx0, 2.0f, handle);
-                    c.fillRect(b.bx1 - 2.0f, b.yTop, 2.0f, b.yBot - b.yTop, handle);
+                const float bw = b.bx1 - b.bx0, bh = b.yBot - b.yTop;
+                if (bw >= 3.0f && bh >= 5.0f) {
+                    // Staplar i hela pixlar: 2 px ljus kant upptill, nedtill och till höger, 1 px grå kant till vänster
+                    c.fillRect(b.bx0, b.yTop, bw, bh, fill);
+                    c.fillRect(b.bx0, b.yTop + 2.0f, 1.0f, bh - 4.0f, now ? theme::orange : theme::barEdgeL);
+                    c.fillRect(b.bx0, b.yTop, bw, 2.0f, handle);
+                    c.fillRect(b.bx0, b.yBot - 2.0f, bw, 2.0f, handle);
+                    c.fillRect(b.bx1 - 2.0f, b.yTop, 2.0f, bh, handle);
+                } else if (bw > 0.0f) {
+                    c.fillRect(b.bx0, b.yTop, bw, bh < 2.0f ? 2.0f : bh, handle);
                 } else {
-                    c.fillRect(b.bx0, b.yTop, 2.0f, b.yBot - b.yTop, handle);   // längd 0: bara ett streck
+                    c.fillRect(b.bx0, b.yTop, 2.0f, bh < 2.0f ? 2.0f : bh, handle);   // längd 0: bara ett streck
                 }
             }
             if (sp) {
@@ -641,13 +646,13 @@ private:
         // 1/32-knappar
         c.text(20, kSplitY + 3, 52, "1/32", 12, kStyleBold, theme::textDim, kAlignFar);
         for (int s = 0; s < kNumSteps; ++s) {
-            const Rect r = { kLeft + s * kCellW + 4.0f, kSplitY, kCellW - 8.0f, kSplitH };
+            const Rect r = { kLeft + s * kCellW + 3.0f, kSplitY, kCellW - 6.0f, kSplitH };
             drawButton(c, r, "1/32", isSplit(s), theme::orange, 11.0f);
         }
 
         // PAN och RES (9 lägen per steg)
         c.text(20, kPanY + 4, 52, "PAN", 12, kStyleBold, theme::textDim, kAlignFar);
-        c.text(20, kResY + 4, 52, "RES", 12, kStyleBold, theme::textDim, kAlignFar);
+        c.text(20, kResY + 3, 52, "RES", 12, kStyleBold, theme::textDim, kAlignFar);
         for (int s = 0; s < kNumSteps; ++s) {
             for (int h = 0; h < (isSplit(s) ? 2 : 1); ++h) {
                 float sx0, sx1;
@@ -661,7 +666,7 @@ private:
         for (int k = 0; k < 2; ++k) {
             const KnobDef& kd = knobs_[k];
             const float x0 = colX(k == 0 ? 0 : 3);
-            drawPanel(c, x0, kRow2Y, kPanelW, kRow2H);
+            drawPanel(c, x0, kRow2Y, colW(k == 0 ? 0 : 3), kRow2H);
             c.text(x0 + 16, kRow2Y + 10, 180, k == 0 ? "DRY/WET" : "OUTPUT", 16, kStyleBold, theme::text, kAlignNear);
             drawKnob(c, kd.cx, kd.cy, kd.r, host_->get(kd.param));
             char txt[32];
@@ -684,7 +689,7 @@ private:
         // === PRESET ===
         {
             const float x0 = colX(2);
-            drawPanel(c, x0, kRow2Y, kPanelW, kRow2H);
+            drawPanel(c, x0, kRow2Y, colW(2), kRow2H);
             c.text(x0 + 16, kRow2Y + 10, 180, "PRESET", 16, kStyleBold, theme::text, kAlignNear);
             drawButton(c, presetPrev_, "<", false, theme::cyan);
             drawButton(c, presetNext_, ">", false, theme::cyan);
@@ -694,19 +699,20 @@ private:
             c.unclip();
             drawButton(c, btnSave_, "SAVE", false, theme::cyan);
             drawButton(c, btnLoad_, "LOAD", false, theme::cyan);
-            c.text(x0, kRow2Y + 138, kPanelW, "Your presets are stored in", 11, kStyleRegular, theme::textDim, kAlignCenter);
-            c.text(x0, kRow2Y + 154, kPanelW, "Documents\\TrueStep Presets", 11, kStyleRegular, theme::textDim, kAlignCenter);
+            c.text(x0, kRow2Y + 138, colW(2), "Your presets are stored in", 11, kStyleRegular, theme::textDim, kAlignCenter);
+            c.text(x0, kRow2Y + 154, colW(2), "Documents\\TrueStep Presets", 11, kStyleRegular, theme::textDim, kAlignCenter);
         }
 
         // === STEP (värden för valt steg) ===
         {
             const float x0 = colX(1);
-            drawPanel(c, x0, kRow2Y, kPanelW, kRow2H);
+            const float pw = colW(1);
+            drawPanel(c, x0, kRow2Y, pw, kRow2H);
             c.text(x0 + 16, kRow2Y + 10, 100, "STEP", 16, kStyleBold, theme::text, kAlignNear);
             const int s = infoStep_, h = infoHalf_ < (isSplit(s) ? 2 : 1) ? infoHalf_ : 0;
             char id[16];
             std::snprintf(id, sizeof id, "%d%s", s + 1, isSplit(s) ? (h ? "b" : "a") : "");
-            c.text(x0 + 90, kRow2Y + 6, 100, id, 22, kStyleBold, theme::orange, kAlignFar);
+            c.text(x0 + pw - 16.0f - 100.0f, kRow2Y + 6, 100, id, 22, kStyleBold, theme::orange, kAlignFar);
             char hp[24], lp[24], pn[16], v[24];
             hzText(host_->get(paramHP(s, h)), hp, sizeof hp);
             hzText(host_->get(paramLP(s, h)), lp, sizeof lp);
@@ -722,7 +728,7 @@ private:
             for (int i = 0; i < 5; ++i) {
                 const float y = kRow2Y + 50.0f + i * 26.0f;
                 c.text(x0 + 16, y + 2, 100, labels[i], 12, kStyleBold, theme::textDim, kAlignNear);
-                c.text(x0 + 16, y, 174, vals[i], 14, kStyleBold, theme::text, kAlignFar);
+                c.text(x0 + 16, y, pw - 32.0f, vals[i], 14, kStyleBold, theme::text, kAlignFar);
             }
         }
 
@@ -730,19 +736,34 @@ private:
                12, kStyleRegular, theme::textDim, kAlignNear);
     }
 
+    // 50 % blandning mot panelens färg: ger "halv" översta pixelrad så att trappan upplevs som en rak linje
+    static Rgba halfTone(Rgba c)
+    {
+        const Rgba p = theme::panel;
+        auto mix = [](Rgba a, Rgba b, int sh) { return (((a >> sh) & 255u) + ((b >> sh) & 255u) + 1u) / 2u; };
+        return argb(255, (int)mix(c, p, 16), (int)mix(c, p, 8), (int)mix(c, p, 0));
+    }
+
+    // PAN: V-form (22,19,16,13,10,13,16,19,22 px). RES: trappa (3,5,7,9,11.5,14,16.5,19,22 px; stapel 5 och 7 har en halv översta rad).
     void drawSelector(Canvas& c, float x0, float x1, float y0, float y1, int slot, bool isPan)
     {
-        c.fillRect(x0 - 1.0f, y0 - 1.0f, (x1 - x0) + 2.0f, (y1 - y0) + 2.0f, theme::selBg);
-        const float w = x1 - x0;
+        static const float kResHeights[kNumSlots] = { 3.0f, 5.0f, 7.0f, 9.0f, 11.5f, 14.0f, 16.5f, 19.0f, 22.0f };
+        const float w = x1 - x0, scale = (y1 - y0) / 22.0f;
         for (int i = 0; i < kNumSlots; ++i) {
-            const float bx0 = x0 + std::floor(i * w / kNumSlots);
-            float bx1 = x0 + std::floor((i + 1) * w / kNumSlots) - (w >= 36.0f ? 1.0f : 0.0f);
-            if (bx1 <= bx0) bx1 = bx0 + 1.0f;
-            const float f = isPan ? 0.35f + 0.65f * (float)std::abs(i - 4) / 4.0f : 0.25f + 0.75f * (float)i / 8.0f;
-            const float top = y1 - f * (y1 - y0);
+            float bx0, bw;
+            if (w >= 40.0f) { bx0 = std::floor(x0) + i * 5.0f; bw = 3.0f; }          // 3 px breda staplar, 5 px delning
+            else {
+                bx0 = x0 + std::floor(i * w / kNumSlots);
+                const float bx1 = x0 + std::floor((i + 1) * w / kNumSlots);
+                bw = bx1 - bx0 > 1.0f ? bx1 - bx0 - (w >= 30.0f ? 1.0f : 0.0f) : 1.0f;
+                if (bw < 1.0f) bw = 1.0f;
+            }
+            const float h = (isPan ? (10.0f + 3.0f * (float)std::abs(i - 4)) : kResHeights[i]) * scale;
+            const float full = std::floor(h);
             const bool sel = (i == slot);
             const Rgba col = isPan ? (sel ? theme::panOn : theme::panOff) : (sel ? theme::resOn : theme::resOff);
-            c.fillRect(bx0, sel ? y0 : top, bx1 - bx0, y1 - (sel ? y0 : top), col);
+            c.fillRect(bx0, y1 - full, bw, full, col);
+            if (h - full > 0.01f) c.fillRect(bx0, y1 - full - 1.0f, bw, 1.0f, halfTone(col));
         }
     }
 
