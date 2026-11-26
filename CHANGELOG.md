@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.0
+- HUMANIZE knob (next to DRY/WET): steps start up to 25 ms earlier or later, following pink 1/f noise (Hennig et al. 2011). No added latency.
+- A preset saved or loaded in the window stays active in Live.
+- PRESET and STEP panels swapped; OUTPUT moved to the right.
+- VST3 version.
+
 ## 1.0.0
 - TrueStep: the step filter/gate from HighLowPass StepFilter, renamed and with the TrueSub/TruePan look.
 - 16 steps per bar, each with LENGTH, LOWPASS/HIGHPASS bar, RESONANCE (0-8) and PAN (50L..50R, true stereo constant power).

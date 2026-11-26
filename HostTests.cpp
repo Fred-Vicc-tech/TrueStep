@@ -102,7 +102,7 @@ int main()
 
     // Parametrar
     char text[64] = {};
-    check(e->numParams == kNumParams && kNumParams == 178, "178 parametrar");
+    check(e->numParams == kNumParams && kNumParams == 179, "179 parametrar");
     bool namesOk = true;
     for (int i = 0; i < kNumParams; ++i) {
         e->dispatcher(e, effGetParamName, i, 0, text, 0);

@@ -56,7 +56,7 @@ static void testParams()
         CHECK(seen.insert(n).second);                         // unika namn (används i presetfiler)
         CHECK(defaultParam(i) >= 0.0f && defaultParam(i) <= 1.0f);
     }
-    CHECK(kNumParams == 178);
+    CHECK(kNumParams == 179 && kParamHumanize == 178);
     CHECK(near_(outputDbFromNorm(defaultParam(kParamOutput)), 0.0, 1e-4));
     char b[32];
     paramDisplayText(kParamPanBase, valueFromSlot(0), b, sizeof b); CHECK(!std::strcmp(b, "50L"));
@@ -511,13 +511,13 @@ static void testGui()
     CHECK(h.p[paramPan(3, 1)] == valueFromSlot(8) && h.p[paramPan(3, 0)] == valueFromSlot(4));
 
     // 12) rattar: DRY/WET (center 123,509) och OUTPUT (center 777,509)
-    g.mouseDown(123, 509, false); g.mouseMove(123, 459, false); g.mouseUp();
+    g.mouseDown(92, 509, false); g.mouseMove(92, 459, false); g.mouseUp();
     CHECK(near_(h.p[kParamMix], 1.0, 1e-6));                   // redan på max
-    g.mouseDown(123, 509, false); g.mouseMove(123, 559, false); g.mouseUp();
+    g.mouseDown(92, 509, false); g.mouseMove(92, 559, false); g.mouseUp();
     CHECK(near_(h.p[kParamMix], 0.8, 1e-4));                   // 50 px ner = -0,2
-    g.mouseDown(123, 509, false); g.mouseMove(123, 559, true); g.mouseUp();
+    g.mouseDown(92, 509, false); g.mouseMove(92, 559, true); g.mouseUp();
     CHECK(near_(h.p[kParamMix], 0.75, 1e-4));                  // Shift = 4 gånger finare (-0,05)
-    g.mouseDown(123, 509, true); g.mouseUp(); CHECK(h.p[kParamMix] == 1.0f);
+    g.mouseDown(92, 509, true); g.mouseUp(); CHECK(h.p[kParamMix] == 1.0f);
     g.mouseDown(777, 509, false); g.mouseMove(341, 484, false); g.mouseUp();
     CHECK(near_(h.p[kParamOutput], defaultParam(kParamOutput) + 0.1, 1e-4));
     g.mouseDown(777, 509, true); g.mouseUp(); CHECK(near_(h.p[kParamOutput], defaultParam(kParamOutput), 1e-6));
@@ -567,6 +567,94 @@ static void testGui()
     CHECK(g.cursorAt(40, 25) == kCurHand);
 }
 
+
+// HUMANIZE: rosa brus (1/f) som förskjuter stegens start
+static void testHumanize()
+{
+    // Statistik över många steg (depth 25 ms, tempo 120)
+    const int M = 20000;
+    std::vector<double> o(M);
+    double mx = 0, sum = 0, sq = 0;
+    for (int k = 0; k < M; ++k) {
+        o[k] = Engine::humanOffsetMs(k, 25.0, 120.0);
+        mx = std::fmax(mx, std::fabs(o[k]));
+        sum += o[k]; sq += o[k] * o[k];
+    }
+    const double mean = sum / M, sd = std::sqrt(sq / M - mean * mean);
+    CHECK(mx <= 25.001);                                   // aldrig mer än HUMANIZE-värdet
+    CHECK(std::fabs(mean) < 1.0);
+    CHECK(sd > 9.0 && sd < 14.0);                          // ungefär halva värdet (+-2 sigma = värdet)
+    auto corr = [&](int lag) {
+        double c = 0;
+        for (int k = 0; k + lag < M; ++k) c += (o[k] - mean) * (o[k + lag] - mean);
+        return c / (M - lag) / (sd * sd);
+    };
+    CHECK(corr(1) > 0.3 && corr(1) < 0.9);                 // hänger ihop över tid (1/f), inte vitt brus
+    CHECK(corr(4) > 0.1);
+    CHECK(corr(1) > corr(8) && corr(8) > -0.1);            // korrelationen avtar med avståndet
+    // jämn fördelning åt båda hållen
+    int pos = 0; for (int k = 0; k < M; ++k) pos += o[k] > 0;
+    CHECK(pos > M * 0.45 && pos < M * 0.55);
+    CHECK(Engine::humanOffsetMs(7, 25.0, 120.0) == Engine::humanOffsetMs(7, 25.0, 120.0));   // samma steg, samma värde
+    CHECK(Engine::humanOffsetMs(-3, 25.0, 120.0) != Engine::humanOffsetMs(3, 25.0, 120.0));  // negativa steg fungerar
+    CHECK(Engine::humanOffsetMs(5, 0.0, 120.0) == 0.0);
+    // snabbt tempo + stort värde: stegen kan aldrig korsa varandra (gräns 0,4 av en 16-del)
+    double worst = 0;
+    for (int k = 0; k < 2000; ++k) worst = std::fmax(worst, std::fabs(Engine::humanOffsetMs(k, 25.0, 300.0)) / (60000.0 / 300.0 / 4.0));
+    CHECK(worst <= 0.4001);
+
+    // I motorn: stegens start hamnar där förskjutningen säger
+    Rig r;
+    const int N = (int)(kSr * 2.0);                         // 16 steg (2 s)
+    std::vector<float> one(N, 1.0f), oL, oR;
+    for (int s = 0; s < kNumSteps; ++s) r.v[paramLen(s, 0)] = 0.5f;
+    r.v[kParamHumanize] = 1.0f;
+    r.run(one, one, oL, oR, 256);
+    const double st = kSr * 0.125;
+    int checkedEdges = 0; double minOff = 1e9, maxOff = -1e9;
+    for (int k = 2; k < 15; ++k) {
+        int edge = -1;
+        for (int i = (int)((k - 0.45) * st); i < (int)((k + 0.45) * st); ++i)
+            if (oL[i] > 0.5f && oL[i - 1] <= 0.5f) { edge = i; break; }
+        CHECK(edge > 0);
+        if (edge <= 0) continue;
+        const double actualMs = (edge - k * st) / kSr * 1000.0 - 1.39;       // 2 ms jämning: 50 % efter 1,39 ms
+        const double wantMs = Engine::humanOffsetMs(k, 25.0, 120.0);
+        CHECK(near_(actualMs, wantMs, 0.5));
+        minOff = std::fmin(minOff, actualMs); maxOff = std::fmax(maxOff, actualMs);
+        ++checkedEdges;
+    }
+    CHECK(checkedEdges == 13 && maxOff - minOff > 5.0);      // stegen förskjuts verkligen, åt båda håll
+    // samma ljud oavsett blockstorlek, och två körningar ger samma resultat
+    std::vector<float> aL, aR, bL, bR;
+    r.e.reset();
+    r.run(one, one, aL, aR, 1024);
+    double dmax = 0; for (int i = 0; i < N; ++i) dmax = std::fmax(dmax, std::fabs(aL[i] - oL[i]));
+    CHECK(dmax < 1e-6);
+    r.e.reset();
+    r.run(one, one, bL, bR, 1024);
+    CHECK(aL == bL);
+    // startar mitt i låten: samma förskjutning som när man spelar dit
+    std::vector<float> cL, cR;
+    const int half = N / 2;
+    std::vector<float> one2(N - half, 1.0f);
+    r.e.reset();
+    r.run(one2, one2, cL, cR, 256, true, 2.0);               // ppq 2,0 = 1 s = steg 8 = sampel 44100
+    double dm = 0; for (int i = 600; i < N - half - 600; ++i) dm = std::fmax(dm, std::fabs(cL[i] - oL[half + i]));
+    CHECK(dm < 0.01);
+    // 0 ms = ingen förändring mot motorn utan HUMANIZE; alla steg öppna ger oförändrat ljud
+    Rig z; z.allOpen(); z.v[kParamHumanize] = 1.0f;
+    std::vector<float> zL, zR; z.run(one, one, zL, zR);
+    bool allOne = true; for (int i = 2000; i < N; ++i) allOne = allOne && std::fabs(zL[i] - 1.0f) < 1e-3f;
+    CHECK(allOne);
+    CHECK(r.e.displayPos() >= 0 && r.e.displayPos() < 32);
+    // snabbt tempo och splittade steg tål det utan krasch
+    Rig q; q.v[kParamHumanize] = 1.0f; for (int s = 0; s < kNumSteps; ++s) q.v[kParamSplitBase + s] = 1.0f;
+    std::vector<float> xL, xR; q.run(one, one, xL, xR, 77, true, 3.3, 299.0);
+    bool fin = true; for (float x : xL) fin = fin && std::isfinite(x) && std::fabs(x) < 4.0f;
+    CHECK(fin);
+}
+
 static void testSpeed()
 {
     Rig r; r.allOpen();
@@ -592,6 +680,7 @@ int main()
     testBuffers();
     testPresetsAndState();
     testGui();
+    testHumanize();
     testSpeed();
     std::printf("%d checks, %d failed\n", g_checks, g_fails);
     return g_fails ? 1 : 0;

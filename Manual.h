@@ -65,6 +65,14 @@ static const ManualPara kManual[] = {
     { kManBody, "Knobs: drag up/down, hold Shift for fine adjustment, use the mouse wheel for small steps and double-click to return to the "
                 "default value." },
 
+    { kManHead, "HUMANIZE" },
+    { kManBody, "The small knob next to DRY/WET moves the start of every step a little earlier or later than the grid, up to 25 ms, "
+                "for a looser, more human feel. 0 ms is off. The shifts are not random jumps: they follow pink (1/f) noise, so "
+                "they drift smoothly from step to step, the way the timing of a real musician does (Hennig et al., 2011, "
+                "\"The nature and perception of fluctuations in human musical rhythms\"). Most steps stay close to the grid "
+                "and only a few move far from it. The pattern is fixed to the position in the song, so playback and export "
+                "sound the same every time. HUMANIZE adds no delay. It moves the gate and the filters in time, not the sound." },
+
     { kManHead, "PRESETS" },
     { kManBody, "TrueStep comes with 12 factory presets, which also appear in the preset list of your host. The arrows step through the "
                 "factory presets and then your own. SAVE stores your own preset (.tsp) in the folder Documents\\TrueStep Presets, which is "

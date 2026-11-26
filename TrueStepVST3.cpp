@@ -35,6 +35,7 @@ void longName(int index, char* out, int n)
     using namespace truestep;
     if (index == kParamMix) { std::snprintf(out, (size_t)n, "Dry/Wet"); return; }
     if (index == kParamOutput) { std::snprintf(out, (size_t)n, "Output"); return; }
+    if (index == kParamHumanize) { std::snprintf(out, (size_t)n, "Humanize"); return; }
     static const char* const what[11] = { "Length", "Highpass", "Lowpass", "Split 1/32", "Length", "Highpass", "Lowpass",
                                           "Pan", "Resonance", "Pan", "Resonance" };
     const int k = (index - 1) / kNumSteps, s = (index - 1) % kNumSteps;

@@ -32,7 +32,8 @@ enum
     kParamPan2Base  = 1 + 9 * kNumSteps,     // 145..160  panorering, andra halvan
     kParamRes2Base  = 1 + 10 * kNumSteps,    // 161..176  resonans, andra halvan
     kParamOutput    = 1 + 11 * kNumSteps,    // 177       utnivå
-    kNumParams      = kParamOutput + 1       // 178
+    kParamHumanize  = 1 + 11 * kNumSteps + 1, // 178      humanize (0..25 ms)
+    kNumParams      = kParamHumanize + 1     // 179
 };
 
 inline int paramLen(int step, int half) { return (half ? kParamLen2Base : kParamLenBase) + step; }
@@ -60,6 +61,9 @@ inline double hzFromNorm(double x) { return 20.0 * std::pow(1000.0, x); }
 const int kOutMinDb = -24, kOutMaxDb = 12;
 inline double outputDbFromNorm(double n) { return kOutMinDb + n * (kOutMaxDb - kOutMinDb); }
 inline float outputNormFromDb(double db) { return (float)((db - kOutMinDb) / (double)(kOutMaxDb - kOutMinDb)); }
+
+// HUMANIZE: största förskjutning av stegens start (ms)
+const double kHumanizeMaxMs = 25.0;
 
 inline bool isSplitValue(float v) { return v >= 0.5f; }
 
@@ -94,6 +98,7 @@ struct NameTable
         std::memset(n, 0, sizeof n);
         std::snprintf(n[kParamMix], 12, "Dry/Wet");
         std::snprintf(n[kParamOutput], 12, "Output");
+        std::snprintf(n[kParamHumanize], 12, "Human");
         for (int s = 0; s < kNumSteps; ++s) {
             const char num[3] = { (char)('0' + (s + 1) / 10), (char)('0' + (s + 1) % 10), 0 };
             const char* const suffix[11] = { "Len", "HP", "LP", "Spl", "Ln2", "HP2", "LP2", "Pan", "Res", "Pn2", "Rs2" };
@@ -133,6 +138,7 @@ inline const char* paramLabel(int i)
 {
     if (isFreqParam(i)) return "Hz";
     if (i == kParamOutput) return "dB";
+    if (i == kParamHumanize) return "ms";
     if (isPanParam(i) || isResParam(i) || isSplitParam(i)) return "";
     return "%";
 }
@@ -159,6 +165,7 @@ inline void paramDisplayText(int i, float v, char* out, size_t n)
     else if (isResParam(i)) std::snprintf(out, n, "%d", slotFromValue(v));
     else if (isSplitParam(i)) std::snprintf(out, n, "%s", isSplitValue(v) ? "On" : "Off");
     else if (i == kParamOutput) std::snprintf(out, n, "%.1f", outputDbFromNorm(v));
+    else if (i == kParamHumanize) std::snprintf(out, n, "%.1f", (double)v * kHumanizeMaxMs);
     else std::snprintf(out, n, "%d", (int)(v * 100.0f + 0.5f));
 }
 
@@ -414,6 +421,8 @@ public:
         }
 
         const double ppqPerSample = (tempo_ / 60.0) / sr_;
+        // HUMANIZE: ms -> 16-delar (vid aktuellt tempo)
+        const double humanScale = clamp01(p_[kParamHumanize]) * kHumanizeMaxMs * 1e-3 * (tempo_ / 60.0) * 4.0;
         const int kChunk = 32;
         int lastPos = 0;
 
@@ -423,8 +432,21 @@ public:
                 const int pos = start + i;
                 const double pos16 = (ppq_ + (double)pos * ppqPerSample) * 4.0;   // 16-delar
                 const double fl = std::floor(pos16);
-                const double frac = pos16 - fl;
-                const long long idx = (long long)fl;
+                double frac = pos16 - fl;
+                long long idx = (long long)fl;
+                if (humanScale > 0.0) {
+                    // HUMANIZE: stegens gränser flyttas (se humanOffset). Steg k börjar vid k + o(k).
+                    if (!humanValid_ || idx != humanIdx_ || humanScale != humanScaleCached_) {
+                        for (int j = 0; j < 4; ++j) humanO_[j] = humanOffset(idx - 1 + j, humanScale);
+                        humanIdx_ = idx; humanScaleCached_ = humanScale; humanValid_ = true;
+                    }
+                    // humanO_[j] hör till steg idx-1+j
+                    double b0 = (double)idx + humanO_[1], b1 = (double)(idx + 1) + humanO_[2];
+                    if (pos16 < b0) { idx -= 1; b1 = b0; b0 = (double)idx + humanO_[0]; }
+                    else if (pos16 >= b1) { idx += 1; b0 = b1; b1 = (double)(idx + 1) + humanO_[3]; }
+                    frac = (pos16 - b0) / (b1 - b0);
+                    if (frac < 0.0) frac = 0.0; else if (frac > 0.999999) frac = 0.999999;
+                }
                 const int step = (int)(((idx % kNumSteps) + kNumSteps) % kNumSteps);
 
                 // delat steg: två 32-delar med egna inställningar
@@ -541,7 +563,47 @@ private:
         }
     }
 
+public:
+    // Förskjutning i ms för steg k vid givet HUMANIZE-värde i ms (för tester och visning)
+    static double humanOffsetMs(long long k, double depthMs, double tempo)
+    {
+        const double per16 = (tempo / 60.0) * 4.0;                 // 16-delar per sekund
+        return humanOffset(k, depthMs * 1e-3 * per16) / per16 * 1000.0;
+    }
+
+private:
+    // Slumptal utan tillstånd: samma steg ger alltid samma värde (spelning och export blir identiska).
+    static double hashUnit(unsigned long long x)       // -> -1..1
+    {
+        x += 0x9E3779B97F4A7C15ULL;
+        x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ULL;
+        x = (x ^ (x >> 27)) * 0x94D049BB133111EBULL;
+        x ^= x >> 31;
+        return (double)(x >> 11) * (2.0 / 9007199254740992.0) - 1.0;
+    }
+
+    // Förskjutning av stegets start (i 16-delar), rosa brus (1/f) enligt Hennig m.fl. 2011:
+    // mänskliga avvikelser från taktslaget hänger ihop över tid. Åtta oktavband (1, 2, 4 ... 128 steg)
+    // med egna slumpvärden summeras (Voss-metoden), så små avvikelser följs av små och
+    // långsamma drivningar finns med. Begränsat till +-2 standardavvikelser = HUMANIZE-värdet.
+    static double humanOffset(long long k, double scale)
+    {
+        const int kBands = 8;
+        double sum = 0.0;
+        for (int j = 0; j < kBands; ++j) {
+            const long long block = (k >= 0) ? (k >> j) : -(((-k - 1) >> j) + 1);
+            sum += hashUnit((unsigned long long)(block + 0x100000000LL) * 16ULL + (unsigned long long)j);
+        }
+        double v = sum / std::sqrt(kBands / 3.0);           // standardavvikelse 1
+        v = v < -2.0 ? -2.0 : (v > 2.0 ? 2.0 : v);
+        double o = v * 0.5 * scale;                          // +-2 sigma = +-HUMANIZE
+        return o < -0.4 ? -0.4 : (o > 0.4 ? 0.4 : o);       // stegen får aldrig korsa varandra
+    }
+
     float p_[kNumParams];
+    double humanO_[4] = { 0, 0, 0, 0 }, humanScaleCached_ = -1.0;
+    long long humanIdx_ = 0;
+    bool humanValid_ = false;
     double sr_ = 44100.0;
     double gateSmooth_ = 0.01, cutoffSmooth_ = 0.01, outSmooth_ = 0.01;
     double gateGain_ = 1.0, outGain_ = 1.0;

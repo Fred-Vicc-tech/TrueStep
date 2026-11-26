@@ -252,7 +252,7 @@ public:
         if (btnLoad_.hit(x, y)) return kActLoad;
 
         // rattar
-        for (int k = 0; k < 2; ++k) {
+        for (int k = 0; k < 3; ++k) {
             const KnobDef& kd = knobs_[k];
             const float dx = x - kd.cx, dy = y - kd.cy, rr = kd.r + 12.0f;
             if (dx * dx + dy * dy > rr * rr) continue;
@@ -347,7 +347,7 @@ public:
     {
         if (clicks == 0) return;
         if (showBack) { scroll_ -= (float)clicks * 48.0f; clampScroll(); return; }
-        for (int k = 0; k < 2; ++k) {
+        for (int k = 0; k < 3; ++k) {
             const KnobDef& kd = knobs_[k];
             const float dx = x - kd.cx, dy = y - kd.cy, rr = kd.r + 12.0f;
             if (dx * dx + dy * dy > rr * rr) continue;
@@ -407,8 +407,9 @@ private:
     static constexpr float kThumbX = 852.0f, kThumbW = 6.0f;
 
     GuiHost* host_;
-    KnobDef knobs_[2] = { { kParamMix, colX(0) + 103.0f, kRow2Y + 92.0f, 44.0f },
-                          { kParamOutput, colX(3) + 103.0f, kRow2Y + 92.0f, 44.0f } };
+    KnobDef knobs_[3] = { { kParamMix, colX(0) + 72.0f, kRow2Y + 92.0f, 44.0f },
+                          { kParamOutput, colX(3) + 103.0f, kRow2Y + 92.0f, 44.0f },
+                          { kParamHumanize, colX(0) + 160.0f, kRow2Y + 92.0f, 20.0f } };
     Rect presetPrev_ = { colX(2) + 14.0f, kRow2Y + 44.0f, 30.0f, 30.0f };
     Rect presetNext_ = { colX(2) + 162.0f, kRow2Y + 44.0f, 30.0f, 30.0f };
     Rect presetBox_ = { colX(2) + 48.0f, kRow2Y + 44.0f, 110.0f, 30.0f };
@@ -656,7 +657,7 @@ private:
             }
         }
 
-        // === DRY/WET och OUTPUT ===
+        // === DRY/WET (med HUMANIZE) och OUTPUT ===
         for (int k = 0; k < 2; ++k) {
             const KnobDef& kd = knobs_[k];
             const float x0 = colX(k == 0 ? 0 : 3);
@@ -669,6 +670,15 @@ private:
             if (k == 1 && std::fabs(outputDbFromNorm(host_->get(kParamOutput))) < 0.05) std::snprintf(txt, sizeof txt, "0.0 dB");
             c.text(kd.cx - 70.0f, kd.cy + 58.0f, 140.0f, txt, 22, kStyleBold, theme::cyan, kAlignCenter);
             if (k == 1) c.text(x0 + 86, kRow2Y + 13, 104, "OVER 0 dB", 11, kStyleBold, over ? theme::red : theme::redOff, kAlignFar);
+        }
+        {
+            const KnobDef& hk = knobs_[2];
+            const float hv = host_->get(kParamHumanize);
+            c.text(hk.cx - 40.0f, hk.cy - 48.0f, 80.0f, "HUMANIZE", 12, kStyleBold, theme::text, kAlignCenter);
+            drawKnob(c, hk.cx, hk.cy, hk.r, hv);
+            char ht[24];
+            std::snprintf(ht, sizeof ht, "%.1f ms", (double)hv * kHumanizeMaxMs);
+            c.text(hk.cx - 40.0f, hk.cy + 29.0f, 80.0f, ht, 13, kStyleBold, theme::cyan, kAlignCenter);
         }
 
         // === PRESET ===
