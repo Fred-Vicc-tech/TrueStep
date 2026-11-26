@@ -422,8 +422,8 @@ private:
     Rect presetBox_ = { colX(2) + 48.0f, kRow2Y + 44.0f, 110.0f, 30.0f };
     Rect btnSave_ = { colX(2) + 14.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
     Rect btnLoad_ = { colX(2) + 106.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
-    Rect btnRandom_ = { colX(0) + 140.0f, kRow2Y + 135.0f, 120.0f, 34.0f };
-    Rect btnBank_ = { colX(0) + 266.0f, kRow2Y + 135.0f, 34.0f, 34.0f };
+    Rect btnRandom_ = { colX(0) + 144.0f, kRow2Y + 135.0f, 87.0f, 34.0f };
+    Rect btnBank_ = { colX(0) + 239.0f, kRow2Y + 135.0f, 33.0f, 34.0f };
     Rect btnBack_ = { 760.0f, 114.0f, 100.0f, 34.0f };
 
     Drag drag_ = kDragNone;
@@ -694,7 +694,7 @@ private:
             c.text(hk.cx - 40.0f, hk.cy + 29.0f, 80.0f, ht, 13, kStyleBold, theme::cyan, kAlignCenter);
         }
         {
-            drawButton(c, btnRandom_, "RANDOMIZE", false, theme::cyan);
+            drawButton(c, btnRandom_, "RANDOMIZE", false, theme::cyan, 12.0f);
             char bn[16];
             std::snprintf(bn, sizeof bn, "%d", host_->bankNumber());
             drawButton(c, btnBank_, bn, host_->bankActive(), theme::cyan);
