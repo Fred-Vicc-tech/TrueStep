@@ -691,7 +691,11 @@ static void testInfoBox()
     CHECK(std::strcmp(tipText(0, 0), "") == 0 && std::strcmp(tipText(9999, 0), "") == 0);
 
     FakeGuiHost h; StepGui g(&h);
-    auto shows = [&](const char* text, uint32_t t0) { CountCanvas c; g.draw(c, t0); return c.has(typeset(text).c_str()); };
+    auto shows = [&](const char* text, uint32_t t0) {   // texten radbryts: första raden är början på texten
+        CountCanvas c; g.draw(c, t0);
+        const std::string full = typeset(text);
+        for (const std::string& x : c.texts) if (x.size() >= 12 && full.compare(0, x.size(), x) == 0) return true;
+        return false; };
     g.mouseMove(99, 516, false);                                      // DRY/WET-ratten
     CHECK(!shows(tipText(kTipDryWet, 0), 1000));                      // först efter en kort paus
     CHECK(!shows(tipText(kTipDryWet, 0), 1200));
@@ -699,7 +703,7 @@ static void testInfoBox()
     g.mouseMove(193, 492, false);                                     // S/H-ratten: ny text, ny paus
     CHECK(!shows(tipText(kTipSH, 0), 1700));
     CHECK(shows(tipText(kTipSH, 0), 2300));
-    g.mouseMove(300, 5, false); { CountCanvas c; g.draw(c, 2400); CHECK(!c.has(typeset(tipText(kTipSH, 0)).c_str())); }   // pekar på inget
+    g.mouseMove(300, 5, false); CHECK(!shows(tipText(kTipSH, 0), 2400));   // pekar på inget
     // staplarnas kanter ger olika texter
     g.mouseMove(185, 200, false); CHECK(g.mouseDown(5, 5, false) == StepGui::kActNone);
     h.lang = 1;
@@ -724,14 +728,36 @@ static void testInfoBox()
     g.mouseDown(40, 25, false); g.mouseUp();
 }
 
+static void testWrap()
+{
+    CountCanvas cv;   // textWidth = tecken * 0,52 * storlek
+    const float size = 10.0f;                                   // 5,2 px per tecken
+    // bryter bara vid mellanslag, aldrig i "32-delar" eller efter bindestreck
+    std::vector<std::string> l = wrapText(cv, "aaaa bbbb 32-delar cccc", 52.0f, size, 0);   // plats för 10 tecken
+    bool ok = true;
+    for (const std::string& s : l) ok = ok && s.size() <= 10 && s.find('\n') == std::string::npos;
+    CHECK(ok);
+    std::string joined;
+    for (size_t i = 0; i < l.size(); ++i) joined += (i ? " " : "") + l[i];
+    CHECK(joined == "aaaa bbbb 32-delar cccc");                  // inget försvinner, inga extra tecken
+    for (const std::string& s : l) CHECK(s.find("32-") == std::string::npos || s.find("delar") != std::string::npos);
+    // fast mellanslag binder ihop
+    const std::string nb = "En\xC2\xA0takt";
+    l = wrapText(cv, "xxxxxxxx " + nb + " yy", 8 * 5.2f + 1.0f, size, 0);
+    bool kept = false; for (const std::string& s : l) if (s.find(nb) != std::string::npos) kept = true;
+    CHECK(kept);
+    l = wrapText(cv, "", 100.0f, size, 0); CHECK(l.size() == 1 && l[0].empty());
+    l = wrapText(cv, "enormouslylongwordwithoutanyspaces", 20.0f, size, 0); CHECK(l.size() == 1);   // ett ord får ta en egen rad
+}
+
 static void testTypeset()
 {
-    const std::string nbsp = "\xC2\xA0", nbh = "\xE2\x80\x91";
+    const std::string nbsp = "\xC2\xA0";
     CHECK(typeset("levels of 0 dB here") == "levels of" + nbsp + "0" + nbsp + "dB" + nbsp + "here");                 // tal + enhet hålls ihop
     CHECK(typeset("from -24 to +12 dB and 20 kHz") == "from -24 to" + nbsp + "+12" + nbsp + "dB" + nbsp + "and" + nbsp + "20" + nbsp + "kHz");
     CHECK(typeset("limit 50 % now") == "limit" + nbsp + "50" + nbsp + "% now");
     CHECK(typeset("saves Random 0001 here").find("Random" + nbsp + "0001") != std::string::npos);
-    CHECK(typeset("delas i 32-delar nu") == "delas i" + nbsp + "32" + nbh + "delar nu");
+    CHECK(typeset("delas i 32-delar nu") == "delas i" + nbsp + "32-delar nu");   // bindestrecket lämnas orört
     CHECK(typeset("slut. En takt i 4/4 \xC3\xA4r").find("En" + nbsp + "takt") != std::string::npos);   // ensamt "En" hindras
     CHECK(typeset("slut. En takt").find("slut.") == 0);
     CHECK(typeset("Ett steg").find("Ett" + nbsp + "steg") == 0);
@@ -906,6 +932,7 @@ int main()
     testGui();
     testHumanize();
     testInfoBox();
+    testWrap();
     testTypeset();
     testRandomize();
     testSampleHold();

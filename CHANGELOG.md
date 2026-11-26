@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.1
+- Fix: odd gaps after hyphens in the manual (e.g. "32-delar"). Line breaking is now done by TrueStep itself: lines are broken only at ordinary spaces, never after a hyphen, and the special non-breaking hyphen character is no longer used.
+
 ## 1.6.0
 - Info box at the top (between the logo and the version): a short explanation appears when the pointer rests on a knob, button, bar or heading. It follows the manual language (ENG | SWE) and can be switched off with INFO ON | OFF on the back page (remembered).
 

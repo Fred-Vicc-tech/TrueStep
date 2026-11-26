@@ -194,7 +194,8 @@ inline void drawKnob(Canvas& c, float cx, float cy, float r, float v)
 // Typografi för manualen: inga radbrytningar mellan tal och enhet ("0 dB", "20 kHz", "50 %"),
 // inte mitt i "32-delar", och korta ord (1-2 bokstäver, samt första ordet i en mening upp till 3 bokstäver)
 // hålls ihop med nästa ord så att de aldrig blir ensamma på en rad. Ersätter mellanslag med fast
-// mellanslag (UTF-8 C2 A0) och bindestreck med icke-brytande bindestreck (E2 80 91).
+// mellanslag (UTF-8 C2 A0). Bindestreck lämnas som de är: radbrytning görs av wrapText, som bara bryter vid vanliga
+// mellanslag (aldrig efter ett bindestreck och aldrig i ett ord som "32-delar").
 inline std::string typeset(const char* in)
 {
     const std::string s = in;
@@ -227,10 +228,6 @@ inline std::string typeset(const char* in)
                 if (p == 0 || s[p - 1] == '.' || s[p - 1] == ':') bind = true;
             }
             if (bind) { out += nb; continue; }
-        }
-        if (c == '-' && i > 0 && i + 1 < n && s[i - 1] >= '0' && s[i - 1] <= '9' && isLetter((unsigned char)s[i + 1])) {
-            out += "\xE2\x80\x91";   // 32-delar, 16-delar
-            continue;
         }
         out += c;
     }
@@ -304,6 +301,28 @@ inline const char* tipText(int id, int lang)
     };
     if (id < 0 || id >= kTipCount) return "";
     return lang == kLangSwe ? sv[id] : en[id];
+}
+
+// Egen radbrytning: bryter bara vid vanliga mellanslag (U+0020). Fasta mellanslag (U+00A0) och bindestreck
+// hålls alltid ihop med ordet. Mäter hela raden med Canvas::textWidth, så inga extra marginaler läggs till.
+inline std::vector<std::string> wrapText(Canvas& c, const std::string& txt, float maxW, float size, int style)
+{
+    std::vector<std::string> lines;
+    std::string line;
+    size_t pos = 0;
+    while (pos <= txt.size()) {
+        size_t sp = txt.find(' ', pos);
+        if (sp == std::string::npos) sp = txt.size();
+        const std::string word = txt.substr(pos, sp - pos);
+        pos = sp + 1;
+        if (word.empty() && sp >= txt.size()) break;
+        if (line.empty()) { line = word; continue; }
+        const std::string cand = line + " " + word;
+        if (c.textWidth(cand.c_str(), size, style) <= maxW) line = cand;
+        else { lines.push_back(line); line = word; }
+    }
+    if (!line.empty() || lines.empty()) lines.push_back(line);
+    return lines;
 }
 
 class StepGui
@@ -549,7 +568,9 @@ private:
     Rect btnLoad_ = { colX(2) + 106.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
     Rect btnRandom_ = { colX(0) + 144.0f, kRow2Y + 135.0f, 87.0f, 34.0f };
     Rect btnBank_ = { colX(0) + 239.0f, kRow2Y + 135.0f, 33.0f, 34.0f };
-    std::vector<std::string> typeEn_, typeSv_;   // manualtexten efter typografi (se typeset)
+    std::vector<std::vector<std::string>> wrapEn_, wrapSv_;   // manualen radbruten (se wrapText)
+    std::vector<std::string> tipLines_;
+    int tipKey_ = -1;
     Rect langEng_ = { 0, 0, 0, 0 }, langSwe_ = { 0, 0, 0, 0 }, infoOn_ = { 0, 0, 0, 0 }, infoOff_ = { 0, 0, 0, 0 };
     int tipId_ = 0;
     bool tipPending_ = false;
@@ -679,13 +700,18 @@ private:
         if (tipPending_) { tipSince_ = nowMs; tipPending_ = false; }
         if (!host_->infoOn() || tipId_ == kTipNone || drag_ != kDragNone) return;
         if ((int32_t)(nowMs - tipSince_) < 450) return;
-        const std::string txt = typeset(tipText(tipId_, host_->language()));
-        if (txt.empty()) return;
+        const char* raw = tipText(tipId_, host_->language());
+        if (!raw[0]) return;
         const float bx = 270.0f, by = 21.0f, bw = 384.0f, bh = 50.0f;
         c.roundRect(bx, by, bw, bh, 12.0f, theme::box, theme::panelEdge, 1.0f);
         const float tw = bw - 22.0f;
-        const float th = c.textHeight(txt.c_str(), tw, 14.0f, kStyleRegular);
-        c.text(bx + 11.0f, by + (bh - th) / 2.0f - 0.5f, tw, txt.c_str(), 14.0f, kStyleRegular, argb(255, 150, 153, 157), kAlignNear);
+        const int key = tipId_ * 2 + host_->language();
+        if (key != tipKey_) { tipLines_ = wrapText(c, typeset(raw), tw - 4.0f, 14.0f, kStyleRegular); tipKey_ = key; }
+        const float lh = c.textHeight("Ag", tw, 14.0f, kStyleRegular);
+        const float th = lh * (float)tipLines_.size();
+        for (size_t k = 0; k < tipLines_.size(); ++k)
+            c.text(bx + 11.0f, by + (bh - th) / 2.0f - 0.5f + lh * (float)k, tw, tipLines_[k].c_str(), 14.0f, kStyleRegular,
+                   argb(255, 150, 153, 157), kAlignNear);
     }
 
     bool hitCell(int x, int y, int& s, int& h) const
@@ -1022,20 +1048,30 @@ private:
         float y = y0;
         int count = 0;
         const ManualPara* man = manualFor(host_->language(), count);
-        std::vector<std::string>& cache = host_->language() == kLangSwe ? typeSv_ : typeEn_;
-        if ((int)cache.size() != count) {
+        std::vector<std::vector<std::string>>& cache = host_->language() == kLangSwe ? wrapSv_ : wrapEn_;
+        if ((int)cache.size() != count) {   // radbrytning görs en gång per språk
             cache.clear();
-            for (int i = 0; i < count; ++i) cache.push_back(man[i].kind == kManHead ? std::string(man[i].text) : typeset(man[i].text));
+            for (int i = 0; i < count; ++i) {
+                float size; int style; Rgba color;
+                manualFont(man[i].kind, size, style, color);
+                if (man[i].kind == kManHead) cache.push_back(std::vector<std::string>(1, std::string(man[i].text)));
+                else cache.push_back(wrapText(c, typeset(man[i].text), kManW - 4.0f, size, style));
+            }
         }
         for (int i = 0; i < count; ++i) {
             const ManualPara& mp = man[i];
-            const char* txt = cache[(size_t)i].c_str();
+            const std::vector<std::string>& lines = cache[(size_t)i];
             float size; int style; Rgba color;
             manualFont(mp.kind, size, style, color);
             if (mp.kind == kManHead && i > 0) y += 14.0f;
-            const float h = c.textHeight(txt, kManW, size, style);
+            const float lh = c.textHeight("Ag", kManW, size, style);
+            const float h = lh * (float)lines.size();
             if (draw && y + h > kManTop - 20.0f && y < kManBottom + 20.0f)
-                c.text(kManX, y, kManW, txt, size, style, color, kAlignNear);
+                for (size_t k = 0; k < lines.size(); ++k) {
+                    const float ly = y + lh * (float)k;
+                    if (ly + lh > kManTop - 4.0f && ly < kManBottom + 4.0f)
+                        c.text(kManX, ly, kManW, lines[k].c_str(), size, style, color, kAlignNear);
+                }
             y += h + (mp.kind == kManHead ? 3.0f : 7.0f);
         }
         return y - y0;
