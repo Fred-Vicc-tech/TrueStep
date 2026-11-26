@@ -728,7 +728,7 @@ static void testTypeset()
 {
     const std::string nbsp = "\xC2\xA0", nbh = "\xE2\x80\x91";
     CHECK(typeset("levels of 0 dB here") == "levels of" + nbsp + "0" + nbsp + "dB" + nbsp + "here");                 // tal + enhet hålls ihop
-    CHECK(typeset("from -24 to +12 dB and 20 kHz") == "from -24 to" + nbsp + "+12" + nbsp + "dB" + nbsp + "and 20" + nbsp + "kHz");
+    CHECK(typeset("from -24 to +12 dB and 20 kHz") == "from -24 to" + nbsp + "+12" + nbsp + "dB" + nbsp + "and" + nbsp + "20" + nbsp + "kHz");
     CHECK(typeset("limit 50 % now") == "limit" + nbsp + "50" + nbsp + "% now");
     CHECK(typeset("saves Random 0001 here").find("Random" + nbsp + "0001") != std::string::npos);
     CHECK(typeset("delas i 32-delar nu") == "delas i" + nbsp + "32" + nbh + "delar nu");
