@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.0
+- S/H (sample and hold) knob next to HUMANIZE: a new random cutoff for every step, held for the whole step. Tied to the song position, so export sounds like playback.
+- New layout of the DRY/WET (wider), OUTPUT (narrower) and the bottom row, following the new GUI image.
+
 ## 1.2.0
 - RANDOMIZE button under HUMANIZE: invents a whole new playable pattern (length, filter, RES, PAN, 1/32 splits). DRY/WET, OUTPUT and HUMANIZE are left alone. RES is only used on longer steps, where it is audible.
 - Every random pattern is saved automatically as Random 0001, Random 0002 ... in Documents\TrueStep Presets\Random. After 9999 patterns a new folder (Random 2, Random 3 ...) is started.

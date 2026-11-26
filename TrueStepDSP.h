@@ -33,7 +33,8 @@ enum
     kParamRes2Base  = 1 + 10 * kNumSteps,    // 161..176  resonans, andra halvan
     kParamOutput    = 1 + 11 * kNumSteps,    // 177       utnivå
     kParamHumanize  = 1 + 11 * kNumSteps + 1, // 178      humanize (0..25 ms)
-    kNumParams      = kParamHumanize + 1     // 179
+    kParamSampleHold = 1 + 11 * kNumSteps + 2, // 179     sample/hold (slumpad cutoff per steg, 0..100 %)
+    kNumParams      = kParamSampleHold + 1   // 180
 };
 
 inline int paramLen(int step, int half) { return (half ? kParamLen2Base : kParamLenBase) + step; }
@@ -99,6 +100,7 @@ struct NameTable
         std::snprintf(n[kParamMix], 12, "Dry/Wet");
         std::snprintf(n[kParamOutput], 12, "Output");
         std::snprintf(n[kParamHumanize], 12, "Human");
+        std::snprintf(n[kParamSampleHold], 12, "SmpHold");
         for (int s = 0; s < kNumSteps; ++s) {
             const char num[3] = { (char)('0' + (s + 1) / 10), (char)('0' + (s + 1) % 10), 0 };
             const char* const suffix[11] = { "Len", "HP", "LP", "Spl", "Ln2", "HP2", "LP2", "Pan", "Res", "Pn2", "Rs2" };
@@ -139,6 +141,7 @@ inline const char* paramLabel(int i)
     if (isFreqParam(i)) return "Hz";
     if (i == kParamOutput) return "dB";
     if (i == kParamHumanize) return "ms";
+    if (i == kParamSampleHold) return "%";
     if (isPanParam(i) || isResParam(i) || isSplitParam(i)) return "";
     return "%";
 }
@@ -561,6 +564,7 @@ public:
         const double ppqPerSample = (tempo_ / 60.0) / sr_;
         // HUMANIZE: ms -> 16-delar (vid aktuellt tempo)
         const double humanScale = clamp01(p_[kParamHumanize]) * kHumanizeMaxMs * 1e-3 * (tempo_ / 60.0) * 4.0;
+        const double shAmount = clamp01(p_[kParamSampleHold]);
         const int kChunk = 32;
         int lastPos = 0;
 
@@ -597,8 +601,19 @@ public:
                 lastPos = step * 2 + half;
 
                 const double openLen = clamp01(p_[paramLen(step, half)]);
-                const double tgtHP = clamp01(p_[paramHP(step, half)]);
+                double tgtHP = clamp01(p_[paramHP(step, half)]);
                 double tgtLP = clamp01(p_[paramLP(step, half)]);
+                if (shAmount > 0.0) {
+                    // SAMPLE/HOLD: nytt slumpvärde för varje steg (varje halva i delade steg), hålls hela steget.
+                    // Lowpass flyttas alltid; highpass bara om den används. Speglas vid kanterna.
+                    const long long key = idx * 2 + half;
+                    if (!shValid_ || key != shKey_) {
+                        shU_[0] = holdValue(idx, half, 0); shU_[1] = holdValue(idx, half, 1);
+                        shKey_ = key; shValid_ = true;
+                    }
+                    tgtLP = reflect01(tgtLP + shAmount * 0.75 * shU_[0]);
+                    if (tgtHP > 0.02) tgtHP = reflect01(tgtHP + shAmount * 0.75 * shU_[1]);
+                }
                 if (tgtLP < tgtHP) tgtLP = tgtHP;                       // lowpass kan inte ligga under highpass
                 const double tgtRes = (double)slotFromValue(p_[paramRes(step, half)]) / 8.0;
                 const double tgtPan = (double)kPanSteps[slotFromValue(p_[paramPan(step, half)])] / 50.0;
@@ -709,6 +724,13 @@ public:
         return humanOffset(k, depthMs * 1e-3 * per16) / per16 * 1000.0;
     }
 
+    // SAMPLE/HOLD-värdet (-1..1) för ett steg och en halva: samma steg ger alltid samma värde.
+    static double holdValue(long long idx, int half, int which)
+    {
+        return hashUnit((unsigned long long)(idx + 0x200000000LL) * 8ULL + (unsigned long long)(half * 2 + which) + 0x5348ULL * 0x10000000000ULL);
+    }
+    static double reflect01(double x) { return x < 0.0 ? clamp01(-x) : (x > 1.0 ? clamp01(2.0 - x) : x); }
+
 private:
     // Slumptal utan tillstånd: samma steg ger alltid samma värde (spelning och export blir identiska).
     static double hashUnit(unsigned long long x)       // -> -1..1
@@ -742,6 +764,9 @@ private:
     double humanO_[4] = { 0, 0, 0, 0 }, humanScaleCached_ = -1.0;
     long long humanIdx_ = 0;
     bool humanValid_ = false;
+    double shU_[2] = { 0, 0 };
+    long long shKey_ = 0;
+    bool shValid_ = false;
     double sr_ = 44100.0;
     double gateSmooth_ = 0.01, cutoffSmooth_ = 0.01, outSmooth_ = 0.01;
     double gateGain_ = 1.0, outGain_ = 1.0;

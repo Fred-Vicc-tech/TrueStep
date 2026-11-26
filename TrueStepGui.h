@@ -254,7 +254,7 @@ public:
         if (btnRandom_.hit(x, y)) return kActRandom;
 
         // rattar
-        for (int k = 0; k < 3; ++k) {
+        for (int k = 0; k < 4; ++k) {
             const KnobDef& kd = knobs_[k];
             const float dx = x - kd.cx, dy = y - kd.cy, rr = kd.r + 12.0f;
             if (dx * dx + dy * dy > rr * rr) continue;
@@ -349,7 +349,7 @@ public:
     {
         if (clicks == 0) return;
         if (showBack) { scroll_ -= (float)clicks * 48.0f; clampScroll(); return; }
-        for (int k = 0; k < 3; ++k) {
+        for (int k = 0; k < 4; ++k) {
             const KnobDef& kd = knobs_[k];
             const float dx = x - kd.cx, dy = y - kd.cy, rr = kd.r + 12.0f;
             if (dx * dx + dy * dy > rr * rr) continue;
@@ -397,8 +397,8 @@ private:
 
     // Layout
     // Rutorna på nedre raden: DRY/WET (bred), STEP (smal), PRESET, OUTPUT. Mellanrum 12 px.
-    static float colX(int i) { static const float x[4] = { 20.0f, 274.0f, 456.0f, 674.0f }; return x[i & 3]; }
-    static float colW(int i) { static const float w[4] = { 242.0f, 170.0f, 206.0f, 206.0f }; return w[i & 3]; }
+    static float colX(int i) { static const float x[4] = { 20.0f, 330.0f, 512.0f, 730.0f }; return x[i & 3]; }
+    static float colW(int i) { static const float w[4] = { 298.0f, 170.0f, 206.0f, 150.0f }; return w[i & 3]; }
     static constexpr float kMainY = 83.0f, kMainH = 322.0f;
     static constexpr float kLeft = 78.0f, kCellW = 48.0f, kGridTop = 134.0f, kGridH = 170.0f;
     static constexpr float kNumY = 112.0f;
@@ -410,15 +410,16 @@ private:
     static constexpr float kThumbX = 852.0f, kThumbW = 6.0f;
 
     GuiHost* host_;
-    KnobDef knobs_[3] = { { kParamMix, colX(0) + 79.0f, kRow2Y + 92.0f, 44.0f },
-                          { kParamOutput, colX(3) + 103.0f, kRow2Y + 92.0f, 44.0f },
-                          { kParamHumanize, colX(0) + 187.0f, kRow2Y + 92.0f, 20.0f } };
+    KnobDef knobs_[4] = { { kParamMix, colX(0) + 79.0f, kRow2Y + 99.0f, 44.0f },
+                          { kParamOutput, colX(3) + 75.0f, kRow2Y + 99.0f, 44.0f },
+                          { kParamHumanize, colX(0) + 243.0f, kRow2Y + 75.0f, 20.0f },
+                          { kParamSampleHold, colX(0) + 173.0f, kRow2Y + 75.0f, 20.0f } };
     Rect presetPrev_ = { colX(2) + 14.0f, kRow2Y + 44.0f, 30.0f, 30.0f };
     Rect presetNext_ = { colX(2) + 162.0f, kRow2Y + 44.0f, 30.0f, 30.0f };
     Rect presetBox_ = { colX(2) + 48.0f, kRow2Y + 44.0f, 110.0f, 30.0f };
     Rect btnSave_ = { colX(2) + 14.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
     Rect btnLoad_ = { colX(2) + 106.0f, kRow2Y + 90.0f, 84.0f, 34.0f };
-    Rect btnRandom_ = { colX(0) + 145.0f, kRow2Y + 148.0f, 84.0f, 28.0f };
+    Rect btnRandom_ = { colX(0) + 166.0f, kRow2Y + 135.0f, 84.0f, 34.0f };
     Rect btnBack_ = { 760.0f, 114.0f, 100.0f, 34.0f };
 
     Drag drag_ = kDragNone;
@@ -675,17 +676,20 @@ private:
             if (k == 0) std::snprintf(txt, sizeof txt, "%d %%", (int)(host_->get(kParamMix) * 100.0f + 0.5f));
             else std::snprintf(txt, sizeof txt, "%+.1f dB", outputDbFromNorm(host_->get(kParamOutput)));
             if (k == 1 && std::fabs(outputDbFromNorm(host_->get(kParamOutput))) < 0.05) std::snprintf(txt, sizeof txt, "0.0 dB");
-            c.text(kd.cx - 70.0f, kd.cy + 58.0f, 140.0f, txt, 22, kStyleBold, theme::cyan, kAlignCenter);
-            if (k == 1) c.text(x0 + 86, kRow2Y + 13, 104, "OVER 0 dB", 11, kStyleBold, over ? theme::red : theme::redOff, kAlignFar);
+            c.text(kd.cx - 70.0f, kd.cy + 43.0f, 140.0f, txt, 22, kStyleBold, theme::cyan, kAlignCenter);
+            if (k == 1) c.text(x0 - 14, kRow2Y + 169, 104, "OVER 0 dB", 11, kStyleBold, over ? theme::red : theme::redOff, kAlignFar);
         }
-        {
-            const KnobDef& hk = knobs_[2];
-            const float hv = host_->get(kParamHumanize);
-            c.text(hk.cx - 40.0f, hk.cy - 48.0f, 80.0f, "HUMANIZE", 12, kStyleBold, theme::text, kAlignCenter);
+        for (int k = 2; k < 4; ++k) {
+            const KnobDef& hk = knobs_[k];
+            const float hv = host_->get(hk.param);
+            c.text(hk.cx - 40.0f, hk.cy - 48.0f, 80.0f, k == 2 ? "HUMANIZE" : "S/H", 12, kStyleBold, theme::text, kAlignCenter);
             drawKnob(c, hk.cx, hk.cy, hk.r, hv);
             char ht[24];
-            std::snprintf(ht, sizeof ht, "%.1f ms", (double)hv * kHumanizeMaxMs);
+            if (k == 2) std::snprintf(ht, sizeof ht, "%.1f ms", (double)hv * kHumanizeMaxMs);
+            else std::snprintf(ht, sizeof ht, "%d %%", (int)(hv * 100.0f + 0.5f));
             c.text(hk.cx - 40.0f, hk.cy + 29.0f, 80.0f, ht, 13, kStyleBold, theme::cyan, kAlignCenter);
+        }
+        {
             drawButton(c, btnRandom_, "RANDOMIZE", false, theme::cyan, 11.0f);
         }
 

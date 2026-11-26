@@ -56,7 +56,7 @@ static void testParams()
         CHECK(seen.insert(n).second);                         // unika namn (används i presetfiler)
         CHECK(defaultParam(i) >= 0.0f && defaultParam(i) <= 1.0f);
     }
-    CHECK(kNumParams == 179 && kParamHumanize == 178);
+    CHECK(kNumParams == 180 && kParamHumanize == 178 && kParamSampleHold == 179);
     CHECK(near_(outputDbFromNorm(defaultParam(kParamOutput)), 0.0, 1e-4));
     char b[32];
     paramDisplayText(kParamPanBase, valueFromSlot(0), b, sizeof b); CHECK(!std::strcmp(b, "50L"));
@@ -511,26 +511,28 @@ static void testGui()
     CHECK(h.p[paramPan(3, 1)] == valueFromSlot(8) && h.p[paramPan(3, 0)] == valueFromSlot(4));
 
     // 12) rattar: DRY/WET (center 123,509) och OUTPUT (center 777,509)
-    g.mouseDown(99, 509, false); g.mouseMove(99, 459, false); g.mouseUp();
+    g.mouseDown(99, 516, false); g.mouseMove(99, 466, false); g.mouseUp();
     CHECK(near_(h.p[kParamMix], 1.0, 1e-6));                   // redan på max
-    g.mouseDown(99, 509, false); g.mouseMove(99, 559, false); g.mouseUp();
+    g.mouseDown(99, 516, false); g.mouseMove(99, 566, false); g.mouseUp();
     CHECK(near_(h.p[kParamMix], 0.8, 1e-4));                   // 50 px ner = -0,2
-    g.mouseDown(99, 509, false); g.mouseMove(99, 559, true); g.mouseUp();
+    g.mouseDown(99, 516, false); g.mouseMove(99, 566, true); g.mouseUp();
     CHECK(near_(h.p[kParamMix], 0.75, 1e-4));                  // Shift = 4 gånger finare (-0,05)
-    g.mouseDown(99, 509, true); g.mouseUp(); CHECK(h.p[kParamMix] == 1.0f);
-    g.mouseDown(777, 509, false); g.mouseMove(341, 484, false); g.mouseUp();
+    g.mouseDown(99, 516, true); g.mouseUp(); CHECK(h.p[kParamMix] == 1.0f);
+    g.mouseDown(805, 516, false); g.mouseMove(341, 491, false); g.mouseUp();
     CHECK(near_(h.p[kParamOutput], defaultParam(kParamOutput) + 0.1, 1e-4));
-    g.mouseDown(777, 509, true); g.mouseUp(); CHECK(near_(h.p[kParamOutput], defaultParam(kParamOutput), 1e-6));
-    g.wheel(777, 509, 2); CHECK(near_(h.p[kParamOutput], defaultParam(kParamOutput) + 2 * 0.5 / 36.0, 1e-5));
-    g.mouseDown(777, 509, false); g.mouseMove(341, 5000, false); g.mouseUp(); CHECK(h.p[kParamOutput] >= 0.0f && h.p[kParamOutput] <= 1.0f);
+    g.mouseDown(805, 516, true); g.mouseUp(); CHECK(near_(h.p[kParamOutput], defaultParam(kParamOutput), 1e-6));
+    g.wheel(805, 516, 2); CHECK(near_(h.p[kParamOutput], defaultParam(kParamOutput) + 2 * 0.5 / 36.0, 1e-5));
+    g.mouseDown(805, 516, false); g.mouseMove(341, 5000, false); g.mouseUp(); CHECK(h.p[kParamOutput] >= 0.0f && h.p[kParamOutput] <= 1.0f);
     CHECK(h.begins == h.ends);
 
     // 13) presetknapparna ger åtgärder
-    CHECK(g.mouseDown(485, 476, false) == StepGui::kActPresetPrev);
-    CHECK(g.mouseDown(633, 476, false) == StepGui::kActPresetNext);
-    CHECK(g.mouseDown(500, 520, false) == StepGui::kActSave);
-    CHECK(g.mouseDown(600, 520, false) == StepGui::kActLoad);
-    CHECK(g.mouseDown(207, 575, false) == StepGui::kActRandom);
+    CHECK(g.mouseDown(541, 476, false) == StepGui::kActPresetPrev);
+    CHECK(g.mouseDown(689, 476, false) == StepGui::kActPresetNext);
+    CHECK(g.mouseDown(556, 520, false) == StepGui::kActSave);
+    CHECK(g.mouseDown(656, 520, false) == StepGui::kActLoad);
+    CHECK(g.mouseDown(228, 569, false) == StepGui::kActRandom);
+    g.mouseDown(173 + 20, 492, false); g.mouseMove(193, 422, false); g.mouseUp();   // S/H-ratten dras uppåt
+    CHECK(h.p[kParamSampleHold] > 0.2f);
     CHECK(g.mouseDown(5, 5, false) == StepGui::kActNone);
 
     // 14) loggan vänder pluginet; manualen går att rulla
@@ -674,7 +676,7 @@ static void testRandomize()
         float v[kNumParams];
         for (int i = 0; i < kNumParams; ++i) v[i] = keep[i];
         randomPattern(seed, v);
-        if (v[kParamMix] != keep[kParamMix] || v[kParamOutput] != keep[kParamOutput] || v[kParamHumanize] != keep[kParamHumanize]) ++touched;
+        if (v[kParamMix] != keep[kParamMix] || v[kParamOutput] != keep[kParamOutput] || v[kParamHumanize] != keep[kParamHumanize] || v[kParamSampleHold] != keep[kParamSampleHold]) ++touched;
         int audible = 0, splits = 0;
         for (int i = 0; i < kNumParams; ++i) if (!std::isfinite(v[i])) ++notFinite;
         for (int s = 0; s < kNumSteps; ++s) {
@@ -739,6 +741,59 @@ static void testRandomize()
     CHECK(silent == 0);
 }
 
+static void testSampleHold()
+{
+    // holdValue: samma steg ger samma värde, olika steg olika, alltid -1..1
+    int bad = 0, same = 0;
+    for (long long k = -50; k < 500; ++k)
+        for (int h = 0; h < 2; ++h)
+            for (int w = 0; w < 2; ++w) {
+                const double u = Engine::holdValue(k, h, w);
+                if (!(u >= -1.0 && u <= 1.0)) ++bad;
+                if (u != Engine::holdValue(k, h, w)) ++bad;
+                if (u == Engine::holdValue(k + 1, h, w)) ++same;
+            }
+    CHECK(bad == 0 && same == 0);
+
+    // Av (0 %) = oförändrat; på = cutoff ändras per steg men hålls konstant inom steget
+    auto run = [](float sh, int blockSize, std::vector<float>& out) {
+        Engine e; e.prepare(44100.0);
+        float v[kNumParams];
+        for (int i = 0; i < kNumParams; ++i) v[i] = defaultParam(i);
+        for (int s = 0; s < kNumSteps; ++s) v[paramLen(s, 0)] = 1.0f;
+        v[kParamSampleHold] = sh;
+        e.setParams(v);
+        const int total = 44100 * 4;
+        std::vector<float> in((size_t)blockSize), l((size_t)blockSize), r((size_t)blockSize);
+        out.clear();
+        uint32_t rng = 12345;
+        for (int pos = 0; pos < total; pos += blockSize) {
+            for (int i = 0; i < blockSize; ++i) { rng = rng * 1664525u + 1013904223u; in[(size_t)i] = ((rng >> 8) / 8388608.0f - 1.0f) * 0.5f; }
+            e.setTransport(true, 120.0, true, true, pos / 44100.0 * 2.0);
+            e.process(in.data(), in.data(), l.data(), r.data(), blockSize, false);
+            out.insert(out.end(), l.begin(), l.end());
+        }
+    };
+    std::vector<float> off, on, on2, onBig;
+    run(0.0f, 256, off); run(1.0f, 256, on); run(1.0f, 256, on2); run(1.0f, 1024, onBig);
+    CHECK(on == on2);                                  // samma inställning, samma ljud
+    double diff = 0.0; for (size_t i = 0; i < off.size(); ++i) diff += std::fabs(off[i] - on[i]);
+    CHECK(diff > 10.0);                                // S/H hörs
+    double bd = 0.0; size_t n = std::min(on.size(), onBig.size());
+    for (size_t i = 0; i < n; ++i) bd = std::max(bd, (double)std::fabs(on[i] - onBig[i]));
+    CHECK(bd < 1e-4);                                  // blockstorleken spelar ingen roll
+    // ljudets nivå per 16-del varierar från steg till steg (slumpad cutoff)
+    const int per = 44100 / 8;   // 120 bpm: 16-del = 0,125 s
+    double lo = 1e9, hi = 0.0;
+    for (int st = 4; st < 28; ++st) {
+        double e2 = 0.0;
+        for (int i = st * per + per / 2; i < (st + 1) * per; ++i) e2 += on[(size_t)i] * on[(size_t)i];
+        lo = std::min(lo, e2); hi = std::max(hi, e2);
+    }
+    CHECK(hi > lo * 1.5);
+    for (float x : on) if (!std::isfinite(x)) { CHECK(false); break; }
+}
+
 static void testSpeed()
 {
     Rig r; r.allOpen();
@@ -766,6 +821,7 @@ int main()
     testGui();
     testHumanize();
     testRandomize();
+    testSampleHold();
     testSpeed();
     std::printf("%d checks, %d failed\n", g_checks, g_fails);
     return g_fails ? 1 : 0;

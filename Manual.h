@@ -73,6 +73,13 @@ static const ManualPara kManual[] = {
                 "and only a few move far from it. The pattern is fixed to the position in the song, so playback and export "
                 "sound the same every time. HUMANIZE adds no delay. It moves the gate and the filters in time, not the sound." },
 
+    { kManHead, "S/H (SAMPLE AND HOLD)" },
+    { kManBody, "The classic random filter of the 1980s. The S/H knob (next to HUMANIZE) gives every step its own random cutoff, "
+                "which is held for the whole step and changes at the next one. 0 % is off. Your own bars stay the starting point: "
+                "S/H moves the lowpass up and down around them (and the highpass too, if you use it), so a rhythm you built keeps "
+                "its shape. In a split step each 1/32 gets its own value. The values are tied to the position in the song, so playback "
+                "and export sound the same every time, but they never repeat from bar to bar." },
+
     { kManHead, "RANDOMIZE" },
     { kManBody, "The RANDOMIZE button under HUMANIZE invents a whole new pattern: step lengths, filters, RES, PAN and 1/32 splits. "
                 "DRY/WET, OUTPUT and HUMANIZE are not changed. The patterns are made to play well: most steps are heard, the filter "
