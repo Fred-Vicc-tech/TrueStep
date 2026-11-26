@@ -2,6 +2,7 @@
 
 ## 1.1.1
 - GUI polish: pixel-exact (non-antialiased) step bars with new colours, straight-line top on PAN/RES level bars, wider DRY/WET box, narrower STEP box, subtitle lowered 2 px.
+- Fix: bars and small bars were blurry on Windows (GDI+ antialiasing/half-pixel offset); rectangles are now drawn with antialiasing off and pixel-exact.
 
 ## 1.1.0
 - HUMANIZE knob (next to DRY/WET): steps start up to 25 ms earlier or later, following pink 1/f noise (Hennig et al. 2011). No added latency.

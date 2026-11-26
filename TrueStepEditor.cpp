@@ -4,6 +4,7 @@
 #include "TrueStepCore.h"
 #include "TrueStepGui.h"
 
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 #include <cwchar>
@@ -62,8 +63,16 @@ struct GdiCanvas : Canvas
 
     void fillRect(float x, float y, float w, float h, Rgba c) override
     {
+        // Rena pixlar: ingen kantutjamning, ingen halvpixelförskjutning
+        SmoothingMode sm = g.GetSmoothingMode();
+        PixelOffsetMode po = g.GetPixelOffsetMode();
+        g.SetSmoothingMode(SmoothingModeNone);
+        g.SetPixelOffsetMode(PixelOffsetModeHalf);
         SolidBrush b(toColor(c));
-        g.FillRectangle(&b, x, y, w, h);
+        g.FillRectangle(&b, (REAL)floorf(x + 0.5f), (REAL)floorf(y + 0.5f),
+                        (REAL)floorf(w + 0.5f), (REAL)floorf(h + 0.5f));
+        g.SetSmoothingMode(sm);
+        g.SetPixelOffsetMode(po);
     }
     void gradientV(float x, float y, float w, float h, Rgba top, Rgba bottom) override
     {
@@ -78,8 +87,14 @@ struct GdiCanvas : Canvas
     void roundRect(float x, float y, float w, float h, float r, Rgba fill, Rgba edge, float edgeW) override
     {
         if (r < 0.5f) {
+            SmoothingMode sm = g.GetSmoothingMode();
+            PixelOffsetMode po = g.GetPixelOffsetMode();
+            g.SetSmoothingMode(SmoothingModeNone);
+            g.SetPixelOffsetMode(PixelOffsetModeHalf);
             if (fill) { SolidBrush b(toColor(fill)); g.FillRectangle(&b, x, y, w, h); }
             if (edge) { Pen p(toColor(edge), edgeW); g.DrawRectangle(&p, x, y, w, h); }
+            g.SetSmoothingMode(sm);
+            g.SetPixelOffsetMode(po);
             return;
         }
         GraphicsPath path;
@@ -192,7 +207,9 @@ void paintTo(Editor* ed, Graphics& out, int width, int height)
         GdiCanvas canvas(g, ff);
         ed->gui.draw(canvas, (uint32_t)GetTickCount());
     }
-    out.DrawImage(&buffer, 0, 0, width, height);
+    out.SetInterpolationMode(InterpolationModeNearestNeighbor);
+    out.SetPixelOffsetMode(PixelOffsetModeHalf);
+    out.DrawImage(&buffer, Rect(0, 0, width, height), 0, 0, width, height, UnitPixel);
 }
 
 void paint(Editor* ed, HDC hdc, int width, int height)
