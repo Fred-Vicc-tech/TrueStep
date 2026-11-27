@@ -520,7 +520,7 @@ public:
     int cursorAt(int x, int y) const
     {
         if (overLogo(x, y)) return kCurHand;
-        if (showBack) return (btnBack_.hit(x, y) || langEng_.hit(x, y) || langSwe_.hit(x, y) || infoOn_.hit(x, y) || infoOff_.hit(x, y)) ? kCurHand : kCurArrow;
+        if (showBack) return (btnBack_.hit(x, y) || langEng_.hit(x, y) || langSwe_.hit(x, y) || infoBox_.hit(x, y)) ? kCurHand : kCurArrow;
         if (presetPrev_.hit(x, y) || presetNext_.hit(x, y) || btnSave_.hit(x, y) || btnLoad_.hit(x, y) || btnRandom_.hit(x, y) || btnBank_.hit(x, y)) return kCurHand;
         if (y >= kSplitY && y < kSplitY + kSplitH && x >= kLeft && x < kLeft + kNumSteps * kCellW) return kCurHand;
         int s, h; bool isPan;
@@ -571,7 +571,7 @@ private:
     std::vector<std::vector<std::string>> wrapEn_, wrapSv_;   // manualen radbruten (se wrapText)
     std::vector<std::string> tipLines_;
     int tipKey_ = -1;
-    Rect langEng_ = { 0, 0, 0, 0 }, langSwe_ = { 0, 0, 0, 0 }, infoOn_ = { 0, 0, 0, 0 }, infoOff_ = { 0, 0, 0, 0 };
+    Rect langEng_ = { 0, 0, 0, 0 }, langSwe_ = { 0, 0, 0, 0 }, infoBox_ = { 0, 0, 0, 0 };
     int tipId_ = 0;
     bool tipPending_ = false;
     uint32_t tipSince_ = 0;   // sätts vid ritning av baksidan
@@ -643,7 +643,7 @@ private:
         if (showBack) {
             if (btnBack_.hit(x, y)) return kTipBack;
             if (langEng_.hit(x, y) || langSwe_.hit(x, y)) return kTipLang;
-            if (infoOn_.hit(x, y) || infoOff_.hit(x, y)) return kTipInfo;
+            if (infoBox_.hit(x, y)) return kTipInfo;
             const float dx = x - 869.0f, dy = y - 42.0f;
             return (dx * dx + dy * dy <= 100.0f) ? kTipMeter : kTipNone;
         }
@@ -699,14 +699,14 @@ private:
     {
         if (tipPending_) { tipSince_ = nowMs; tipPending_ = false; }
         if (!host_->infoOn() || tipId_ == kTipNone || drag_ != kDragNone) return;
-        if ((int32_t)(nowMs - tipSince_) < 450) return;
+        if ((int32_t)(nowMs - tipSince_) < 300) return;
         const char* raw = tipText(tipId_, host_->language());
         if (!raw[0]) return;
         const float bx = 270.0f, by = 21.0f, bw = 384.0f, bh = 50.0f;
         c.roundRect(bx, by, bw, bh, 12.0f, theme::box, theme::panelEdge, 1.0f);
         const float tw = bw - 22.0f;
         const int key = tipId_ * 2 + host_->language();
-        if (key != tipKey_) { tipLines_ = wrapText(c, typeset(raw), tw - 4.0f, 14.0f, kStyleRegular); tipKey_ = key; }
+        if (key != tipKey_) { tipLines_ = wrapText(c, typeset(raw), tw * 0.97f, 14.0f, kStyleRegular); tipKey_ = key; }
         // Fasta rader som på referensbilden: första raden alltid på samma plats, andra raden 18 px under
         for (size_t k = 0; k < tipLines_.size() && k < 2; ++k)
             c.text(279.5f, 26.7f + 18.0f * (float)k, tw, tipLines_[k].c_str(), 14.0f, kStyleRegular,
@@ -1020,8 +1020,7 @@ private:
 
     void backMouseDown(int x, int y)
     {
-        if (infoOn_.hit(x, y)) { host_->setInfoOn(true); return; }
-        if (infoOff_.hit(x, y)) { host_->setInfoOn(false); return; }
+        if (infoBox_.hit(x, y)) { host_->setInfoOn(!host_->infoOn()); return; }
         if (langEng_.hit(x, y) && host_->language() != kLangEng) { host_->setLanguage(kLangEng); contentH_ = 0.0f; scroll_ = 0.0f; return; }
         if (langSwe_.hit(x, y) && host_->language() != kLangSwe) { host_->setLanguage(kLangSwe); contentH_ = 0.0f; scroll_ = 0.0f; return; }
         if (x >= kThumbX - 6 && x <= kThumbX + kThumbW + 6 && y >= kManTop && y <= kManBottom && maxScrollPx() > 0.0f) {
@@ -1054,7 +1053,7 @@ private:
                 float size; int style; Rgba color;
                 manualFont(man[i].kind, size, style, color);
                 if (man[i].kind == kManHead) cache.push_back(std::vector<std::string>(1, std::string(man[i].text)));
-                else cache.push_back(wrapText(c, typeset(man[i].text), kManW - 4.0f, size, style));
+                else cache.push_back(wrapText(c, typeset(man[i].text), kManW * 0.96f, size, style));
             }
         }
         for (int i = 0; i < count; ++i) {
@@ -1122,25 +1121,27 @@ private:
             lx += wBar + 8.0f;
             c.text(lx, ly, 60, "SWE", 12, kStyleBold, sv ? theme::cyan : theme::textDim, kAlignNear);
             langSwe_ = { lx - 3.0f, ly - 2.0f, wSwe + 6.0f, 20.0f };
-            // INFO ON | OFF: infotext-rutan högst upp
-            lx += wSwe + 30.0f;
-            c.text(lx, ly, 60, "INFO", 12, kStyleBold, theme::textDim, kAlignNear);
-            lx += c.textWidth("INFO", 12, kStyleBold) + 14.0f;
-            const bool io = host_->infoOn();
-            const float wOn = c.textWidth("ON", 12, kStyleBold), wOff = c.textWidth("OFF", 12, kStyleBold);
-            c.text(lx, ly, 40, "ON", 12, kStyleBold, io ? theme::cyan : theme::textDim, kAlignNear);
-            infoOn_ = { lx - 3.0f, ly - 2.0f, wOn + 6.0f, 20.0f };
-            lx += wOn + 8.0f;
+            // INFO BOX / INFORUTA + liten kvadrat som tänds (blå) och släcks (svart) med ett klick
+            lx += wSwe + 8.0f;
             c.text(lx, ly, 20, "|", 12, kStyleBold, theme::textDim, kAlignNear);
             lx += wBar + 8.0f;
-            c.text(lx, ly, 40, "OFF", 12, kStyleBold, io ? theme::textDim : theme::cyan, kAlignNear);
-            infoOff_ = { lx - 3.0f, ly - 2.0f, wOff + 6.0f, 20.0f };
+            const char* infoLabel = sv ? "INFORUTA" : "INFO BOX";
+            c.text(lx, ly, 120, infoLabel, 12, kStyleBold, theme::textDim, kAlignNear);
+            const float wLab = c.textWidth(infoLabel, 12, kStyleBold);
+            const float sx = std::floor(lx + wLab + 6.0f), sy = ly + 3.0f;      // kvadraten: 11 x 11 px, kant 1 px
+            const Rgba edge = argb(255, 122, 127, 132);
+            c.fillRect(sx, sy, 11.0f, 1.0f, edge);
+            c.fillRect(sx, sy + 10.0f, 11.0f, 1.0f, edge);
+            c.fillRect(sx, sy + 1.0f, 1.0f, 9.0f, edge);
+            c.fillRect(sx + 10.0f, sy + 1.0f, 1.0f, 9.0f, edge);
+            if (host_->infoOn()) c.fillRect(sx + 3.0f, sy + 3.0f, 5.0f, 5.0f, argb(255, 2, 190, 220));
+            infoBox_ = { lx - 3.0f, ly - 2.0f, (sx + 11.0f) - lx + 6.0f, 20.0f };   // etiketten och kvadraten är klickbara
         }
         c.text(380, 195, 478, "scroll with the mouse wheel  \xC2\xB7  click the logo or BACK to return", 11, kStyleRegular,
                theme::textDim, kAlignFar);
         if (contentH_ <= 0.0f) contentH_ = layoutManual(c, 0.0f, false);
         clampScroll();
-        c.clip(kManX - 4.0f, kManTop, kManW + 8.0f, kManBottom - kManTop);
+        c.clip(kManX - 4.0f, kManTop, kManW + 12.0f, kManBottom - kManTop);
         layoutManual(c, kManTop - scroll_, true);
         c.unclip();
 

@@ -720,7 +720,8 @@ static void testInfoBox()
     // baksidan: INFO ON | OFF
     g.mouseDown(40, 25, false); g.mouseUp();
     CHECK(g.showBack);
-    { CountCanvas c; g.draw(c, 8000); CHECK(c.has("INFO") && c.has("ON") && c.has("OFF")); }
+    { CountCanvas c; g.draw(c, 8000); CHECK(c.has("INFO BOX") && !c.has("ON") && !c.has("OFF")); }
+    h.lang = 1; { CountCanvas c; g.draw(c, 8001); CHECK(c.has("INFORUTA")); } h.lang = 0; { CountCanvas c2; g.draw(c2, 8002); }
     CHECK(h.info);
     bool toggled = false;
     for (int x = 130; x < 420 && !toggled; x += 3) { g.mouseDown(x, 200, false); g.mouseUp(); if (!h.info) toggled = true; if (h.lang) { h.lang = 0; } }

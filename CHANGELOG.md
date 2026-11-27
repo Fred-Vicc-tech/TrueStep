@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.3
+- Back page: INFO BOX (INFORUTA in Swedish) with a small square that is lit (blue) or dark with a click, instead of ON | OFF.
+- Fix: the last letters of some manual lines were cut off at the right edge (e.g. the g in "steg"). Lines are now wrapped a little earlier and the clip area is wider.
+- Info box appears after 0.3 s instead of 0.45 s.
+
 ## 1.6.2
 - Fix: doubled text in the manual and the info box (GDI+ wrapped a line that was a pixel too wide and put the last word on the next line). Lines are now drawn as they are, with no wrapping or clipping of their own.
 - Info box: the first line always sits at the same place, the second line 18 px below (as in the reference image); a one-line text no longer jumps.

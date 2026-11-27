@@ -105,7 +105,7 @@ static const ManualPara kManual[] = {
     { kManHead, "INFO BOX" },
     { kManBody, "When you rest the mouse pointer on a knob, a button, a bar or a heading, a short explanation appears in the box at the top "
                 "of the window. It follows the language you chose for the manual (ENG | SWE). If you get tired of it, switch it off "
-                "with INFO ON | OFF on this page, next to ENG | SWE." },
+                "with the small INFO BOX square on this page, next to ENG | SWE." },
 
     { kManNote, "The VST2 version of TrueStep is built with its own interface (no third-party SDK). The VST3 version uses the VST3 SDK from Steinberg (MIT licence). TrueStep runs on Windows 7 and later." },
 };
@@ -206,7 +206,7 @@ static const ManualPara kManualSv[] = {
     { kManHead, "INFORUTAN" },
     { kManBody, "När du låter muspekaren vila på en ratt, en knapp, en stapel eller en rubrik visas en kort förklaring i rutan högst upp "
                 "i fönstret. Den följer språket du valt för manualen (ENG | SWE). Om du tröttnar på den stänger du av den med "
-                "INFO ON | OFF på den här sidan, bredvid ENG | SWE." },
+                "den lilla INFORUTA-kvadraten på den här sidan, bredvid ENG | SWE." },
 
     { kManNote, "VST2-versionen av TrueStep är byggd med ett eget gränssnitt (ingen SDK från tredje part). VST3-versionen använder "
                 "VST3-SDK från Steinberg (MIT-licens). TrueStep fungerar på Windows 7 och senare." },
