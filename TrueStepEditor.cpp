@@ -129,6 +129,9 @@ struct GdiCanvas : Canvas
         const StringFormat plain;
         // Loggan (stor text) ritas utan GDI+:s sidmarginal, som i TruePan
         StringFormat fmt(size >= 30.0f ? StringFormat::GenericTypographic() : &plain);
+        // Varje rad ritas som den är: ingen egen radbrytning och ingen beskärning. (Annars kunde GDI+ bryta en rad som
+        // var någon pixel för bred och lägga sista ordet på raden under, så att texten blev dubblerad.)
+        fmt.SetFormatFlags(fmt.GetFormatFlags() | StringFormatFlagsNoWrap | StringFormatFlagsNoClip);
         fmt.SetAlignment(align == kAlignCenter ? StringAlignmentCenter : (align == kAlignFar ? StringAlignmentFar : StringAlignmentNear));
         RectF r(x, y, w, 4000.0f);
         g.DrawString(ws.c_str(), -1, &font, r, &fmt, &brush);

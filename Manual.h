@@ -80,11 +80,6 @@ static const ManualPara kManual[] = {
                 "its shape. In a split step each 1/32 gets its own value. The values are tied to the position in the song, so playback "
                 "and export sound the same every time, but they never repeat from bar to bar." },
 
-    { kManHead, "INFO BOX" },
-    { kManBody, "When you rest the mouse pointer on a knob, a button, a bar or a heading, a short explanation appears in the box at the top "
-                "of the window. It follows the language you chose for the manual (ENG | SWE). If you get tired of it, switch it off "
-                "with INFO ON | OFF on this page, next to ENG | SWE." },
-
     { kManHead, "RANDOMIZE" },
     { kManBody, "The RANDOMIZE button under HUMANIZE invents a whole new pattern: step lengths, filters, RES, PAN and 1/32 splits. "
                 "DRY/WET, OUTPUT and HUMANIZE are not changed. The patterns are made to play well: most steps are heard, the filter "
@@ -106,6 +101,11 @@ static const ManualPara kManual[] = {
     { kManBody, "Try 50 % length on all steps for a classic trance gate. Move the lowpass edge down and add resonance on every second "
                 "step for a rhythmic wah. Split the last step of a bar for a quick roll. Put TruePan after TrueStep for even more movement "
                 "in the stereo field." },
+
+    { kManHead, "INFO BOX" },
+    { kManBody, "When you rest the mouse pointer on a knob, a button, a bar or a heading, a short explanation appears in the box at the top "
+                "of the window. It follows the language you chose for the manual (ENG | SWE). If you get tired of it, switch it off "
+                "with INFO ON | OFF on this page, next to ENG | SWE." },
 
     { kManNote, "The VST2 version of TrueStep is built with its own interface (no third-party SDK). The VST3 version uses the VST3 SDK from Steinberg (MIT licence). TrueStep runs on Windows 7 and later." },
 };
@@ -179,11 +179,6 @@ static const ManualPara kManualSv[] = {
                 "I ett delat steg får varje 1/32 ett eget värde. Värdena är knutna till positionen i låten, så uppspelning och export "
                 "låter likadant varje gång, men de upprepas aldrig från takt till takt." },
 
-    { kManHead, "INFORUTAN" },
-    { kManBody, "När du låter muspekaren vila på en ratt, en knapp, en stapel eller en rubrik visas en kort förklaring i rutan högst upp "
-                "i fönstret. Den följer språket du valt för manualen (ENG | SWE). Om du tröttnar på den stänger du av den med "
-                "INFO ON | OFF på den här sidan, bredvid ENG | SWE." },
-
     { kManHead, "RANDOMIZE" },
     { kManBody, "Knappen RANDOMIZE under HUMANIZE hittar på ett helt nytt mönster: steglängder, filter, RES, PAN och 1/32-delningar. "
                 "DRY/WET, OUTPUT, HUMANIZE och S/H ändras inte. Mönstren är gjorda för att fungera: de flesta steg hörs, filtret släpper "
@@ -207,6 +202,11 @@ static const ManualPara kManualSv[] = {
     { kManBody, "Prova 50 % längd på alla steg för en klassisk trance-gate. Flytta lowpass-kanten ner och lägg på resonans på vartannat "
                 "steg för en rytmisk wah. Dela sista steget i en takt för en snabb rull. Lägg TruePan efter TrueStep för ännu mer "
                 "rörelse i stereobilden." },
+
+    { kManHead, "INFORUTAN" },
+    { kManBody, "När du låter muspekaren vila på en ratt, en knapp, en stapel eller en rubrik visas en kort förklaring i rutan högst upp "
+                "i fönstret. Den följer språket du valt för manualen (ENG | SWE). Om du tröttnar på den stänger du av den med "
+                "INFO ON | OFF på den här sidan, bredvid ENG | SWE." },
 
     { kManNote, "VST2-versionen av TrueStep är byggd med ett eget gränssnitt (ingen SDK från tredje part). VST3-versionen använder "
                 "VST3-SDK från Steinberg (MIT-licens). TrueStep fungerar på Windows 7 och senare." },

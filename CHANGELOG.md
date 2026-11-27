@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.2
+- Fix: doubled text in the manual and the info box (GDI+ wrapped a line that was a pixel too wide and put the last word on the next line). Lines are now drawn as they are, with no wrapping or clipping of their own.
+- Info box: the first line always sits at the same place, the second line 18 px below (as in the reference image); a one-line text no longer jumps.
+- HUMANIZE info text mentions Hennig et al. (2011). The INFO BOX section is now at the end of the manual.
+
 ## 1.6.1
 - Fix: odd gaps after hyphens in the manual (e.g. "32-delar"). Line breaking is now done by TrueStep itself: lines are broken only at ordinary spaces, never after a hyphen, and the special non-breaking hyphen character is no longer used.
 

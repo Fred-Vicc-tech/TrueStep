@@ -260,7 +260,7 @@ inline const char* tipText(int id, int lang)
         "OUTPUT: level after the effect, -24 to +12 dB. Double-click to reset to 0 dB.",
         "Lights up red if the output goes over 0 dBFS.",
         "S/H: sample and hold. A new random cutoff for every step, held until the next one.",
-        "HUMANIZE: moves each step a little earlier or later, up to 25 ms, for a looser feel.",
+        "HUMANIZE: moves each step up to 25 ms, following the natural timing drift of musicians (Hennig et al., 2011).",
         "RANDOMIZE: invents a new pattern and saves it as Random 0001, 0002 ... in the Random folder.",
         "Browse your saved Random patterns, bank by bank. Press again for the next bank.",
         "PRESET: the arrows step through the factory presets and then your own. SAVE and LOAD handle files.",
@@ -288,7 +288,7 @@ inline const char* tipText(int id, int lang)
         "OUTPUT: nivån efter effekten, -24 till +12 dB. Dubbelklicka för att nollställa till 0 dB.",
         "Lyser rött om utnivån går över 0 dBFS.",
         "S/H: sample and hold. En ny slumpad cutoff för varje steg, som hålls till nästa.",
-        "HUMANIZE: flyttar varje steg lite tidigare eller senare, upp till 25 ms, för en lösare känsla.",
+        "HUMANIZE: flyttar varje steg upp till 25 ms, efter musikers naturliga tidsdrift (Hennig m.fl., 2011).",
         "RANDOMIZE: hittar på ett nytt mönster och sparar det som Random 0001, 0002 ... i Random-mappen.",
         "Bläddra bland dina sparade Random-mönster, bank för bank. Tryck igen för nästa bank.",
         "PRESET: pilarna bläddrar bland fabrikspresets och sedan dina egna. SAVE och LOAD hanterar filer.",
@@ -707,10 +707,9 @@ private:
         const float tw = bw - 22.0f;
         const int key = tipId_ * 2 + host_->language();
         if (key != tipKey_) { tipLines_ = wrapText(c, typeset(raw), tw - 4.0f, 14.0f, kStyleRegular); tipKey_ = key; }
-        const float lh = c.textHeight("Ag", tw, 14.0f, kStyleRegular);
-        const float th = lh * (float)tipLines_.size();
-        for (size_t k = 0; k < tipLines_.size(); ++k)
-            c.text(bx + 11.0f, by + (bh - th) / 2.0f - 0.5f + lh * (float)k, tw, tipLines_[k].c_str(), 14.0f, kStyleRegular,
+        // Fasta rader som på referensbilden: första raden alltid på samma plats, andra raden 18 px under
+        for (size_t k = 0; k < tipLines_.size() && k < 2; ++k)
+            c.text(279.5f, 26.7f + 18.0f * (float)k, tw, tipLines_[k].c_str(), 14.0f, kStyleRegular,
                    argb(255, 150, 153, 157), kAlignNear);
     }
 
